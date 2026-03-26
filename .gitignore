@@ -1,0 +1,104 @@
+# -----------------------------------------------------------------------------
+# Environment & secrets
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+.ruff_cache/
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# -----------------------------------------------------------------------------
+# Node.js (future Admin Web / tooling)
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+.yarn/
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# Original rulebook assets (PDF / images) — keep folder, not contents
+# -----------------------------------------------------------------------------
+data_pipeline/raw/*
+!data_pipeline/raw/.gitkeep
+
+# -----------------------------------------------------------------------------
+# Large or machine-local pipeline outputs (uncomment if needed)
+# -----------------------------------------------------------------------------
+# data_pipeline/output/*
+# !data_pipeline/output/.gitkeep
+
+# -----------------------------------------------------------------------------
+# IDE & OS
+# -----------------------------------------------------------------------------
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# -----------------------------------------------------------------------------
+# Logs & temp
+# -----------------------------------------------------------------------------
+logs/
+*.log
+tmp/
+temp/
+.cache/
+
+# -----------------------------------------------------------------------------
+# Dify / local exports (optional: ignore if you only version-control reviewed YAML)
+# -----------------------------------------------------------------------------
+# dify_config/**/*.local.yml
