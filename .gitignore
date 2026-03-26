@@ -71,6 +71,7 @@ pnpm-debug.log*
 # Original rulebook assets (PDF / images) — keep folder, not contents
 # -----------------------------------------------------------------------------
 data_pipeline/raw/*
+data_pipeline/output/*
 !data_pipeline/raw/.gitkeep
 
 # -----------------------------------------------------------------------------
