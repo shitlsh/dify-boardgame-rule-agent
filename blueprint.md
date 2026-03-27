@@ -82,3 +82,121 @@
     3. **用户隔离设计：**
         * Demo 阶段为单用户场景，`conversation_id` 仅存于前端状态，天然隔离（不同浏览器标签页 = 不同会话）。
         * 生产化时，若需多用户并发访问同一游戏，应将 `(session_token, game_id, conversation_id)` 三元组存入数据库，确保不同用户的对话上下文严格隔离，避免会话混用。
+
+---
+
+## 3. 数据管理策略 (Data Management Strategy)
+
+### 3.1 三类数据的定位
+
+本项目核心数据分为三类，归属和管理方式各不相同：
+
+| 类别 | 内容 | 存储位置 | 管理方式 |
+|------|------|----------|----------|
+| **Web 应用数据** | 游戏元数据、任务状态、`dataset_id` 映射 | SQLite（`webapp/prisma/dev.db`） | 量极小；`dataset_id` 是连接 webapp 与 Dify 的关键外键 |
+| **数据产物（Artifacts）** | 规则书原始图片、提炼 Markdown、Dify 段落快照 | `storage/`（本地路径，未来可迁移至对象存储） | 量大，**不进 Git**；独立备份管理 |
+| **AI 配置（As Code）** | Workflow DSL、Chatbot 配置 YAML | `dify_config/`，纳入 Git | 量极小；决定 AI 行为，必须版本化 |
+
+### 3.2 Dify Dataset 的本质与建库成本
+
+自托管 Dify 的 Dataset 数据有三层存储，全在 Docker volumes 内：
+
+| 存储层 | Volume | 内容 |
+|--------|--------|------|
+| 元数据 | `dify_db_data` → PostgreSQL | 知识库名称、文档列表、切分配置 |
+| 向量索引 | `dify_weaviate_data` → Weaviate | 每个 chunk 的 embedding vectors |
+| 原始文件 | `dify_storage_data` → MinIO | 上传的原始 Markdown 文件 |
+
+建库成本构成：
+
+| 步骤 | 成本 | 说明 |
+|------|------|------|
+| Chunking | 可忽略 | 纯文本处理，按 `\n# ` 切段 |
+| Embedding | 中等 | 每个 chunk 调用 Embedding 模型 |
+| High-quality 索引 | **主要成本** | LLM 对每个 chunk 生成摘要/Q&A，一份中型规则书可达数百次 LLM 调用 |
+
+Dataset **不是可随意丢弃的临时索引**，不可无条件从 Markdown 重建，需要专门的保护与迁移策略。
+
+### 3.3 数据产物目录设计
+
+`storage/` 目录由 webapp 运行时读写，**整体加入 `.gitignore`**，通过独立备份管理：
+
+```
+storage/
+├── raw/
+│   └── <game_slug>/            ← 爬取的图片 / 上传 ZIP 解压后的图片（按序命名）
+│       ├── 01_page.jpg
+│       └── 02_page.jpg
+└── output/
+    └── <game_slug>/
+        ├── rules_V1.md         ← Extractor Workflow 产出的 Markdown（版本化命名）
+        └── segments_V1.json    ← 建库完成后从 Dify Datasets API 导出的段落快照
+```
+
+`storage_manifests/` 是轻量元数据索引，**纳入 Git**（纯小 JSON，不含实际内容）：
+
+```
+storage_manifests/
+└── games.json                  ← { game_slug → { version, datasetId, outputPath } }
+```
+
+存储路径通过环境变量统一配置，以便未来平滑迁移：
+
+```bash
+STORAGE_BASE_PATH=./storage        # Demo 阶段（本地相对路径）
+# STORAGE_BASE_PATH=s3://bucket    # 上云时替换，webapp 代码逻辑不变
+```
+
+### 3.4 数据保护三层策略
+
+**Layer 1 — Docker Volume 热备份（日常保护，零重建成本）**
+
+直接打包 Dify 的三个关键 volumes，是成本最低、最完整的保护手段。同版本 Dify 实例可无损恢复：
+
+```bash
+# 备份
+docker run --rm \
+  -v dify_db_data:/data/db \
+  -v dify_weaviate_data:/data/weaviate \
+  -v dify_storage_data:/data/storage \
+  -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/dify-$(date +%Y%m%d).tar.gz /data
+
+# 恢复：解压覆盖对应 volume 后重启 Dify 容器即可
+```
+
+适用：日常备份、同机器恢复、小版本升级。
+
+**Layer 2 — 段落快照导出（跨实例迁移 / 大版本升级）**
+
+每次建库成功后，调用 Datasets API 将已切好的段落导出存为 `segments_V<n>.json`：
+
+```
+GET /v1/datasets/{dataset_id}/documents/{document_id}/segments
+```
+
+迁移至新 Dify 实例时，通过**自定义分段上传模式**（custom segmentation）直接导入，跳过 Chunking 和 High-quality LLM 重处理，**只需承担 Embedding 成本**。
+
+适用：跨大版本升级、换云服务商、Weaviate 数据损坏恢复。
+
+**Layer 3 — Markdown 兜底重建（最终托底）**
+
+`storage/output/<game_slug>/rules_V<n>.md` 仅在 Layer 1 和 Layer 2 同时失效时使用，完整重跑建库流程。成本最高，**不作常规迁移路径**。
+
+### 3.5 迁移决策树
+
+```
+需要迁移或恢复 Dify Dataset？
+│
+├─ 同服务器恢复（数据未损坏）
+│   └─ Layer 1：还原 Docker volumes → 重启容器 ✓
+│
+├─ 换机器 / 上云（同 Dify 大版本）
+│   └─ Layer 1：打包 volumes → 新机器解压 → 重启 ✓
+│
+├─ 大版本升级（volume 格式不兼容）
+│   └─ Layer 2：导入 segments.json → 仅重 Embedding ✓
+│
+└─ segments.json 也丢失
+    └─ Layer 3：从 Markdown 完整重建（接受全部费用）✓
+```

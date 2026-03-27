@@ -26,8 +26,17 @@
 - [ ] 运行 `npx prisma migrate dev --name init` 生成首次迁移
 - [ ] 运行 `npx prisma generate` 生成 Prisma Client
 
+### 本地存储目录
+- [ ] 在项目根目录创建 `storage/raw/` 和 `storage/output/` 目录（加 `.gitkeep`）
+- [ ] 在项目根目录创建 `storage_manifests/` 目录，新建 `games.json`（初始内容 `{}`）
+- [ ] 确认 `.gitignore` 已忽略 `storage/` 内容、但保留 `storage_manifests/`
+
 ### 环境变量
-- [ ] 更新 `.env.example`，补充所有需要的变量键名（`DIFY_API_KEY`, `DIFY_BASE_URL`, `DIFY_DATASET_API_KEY`, `GEMINI_API_KEY`）
+- [ ] 更新 `.env.example`，补充所有需要的变量键名：
+  - `DIFY_API_KEY`, `DIFY_BASE_URL`, `DIFY_DATASET_API_KEY`
+  - `DIFY_CHATBOT_API_KEY`
+  - `GEMINI_API_KEY`
+  - `STORAGE_BASE_PATH=./storage`
 - [ ] 在本地 `.env` 中填入真实值
 
 ---
@@ -55,6 +64,14 @@
 
 ## Phase 3：全自动 ETL 闭环 (Next.js + Dify API)
 
+### 存储层封装（`webapp/lib/storage.ts`）
+- [ ] 实现 `storage.ts`：
+  - 读取 `STORAGE_BASE_PATH` 环境变量，统一管理路径
+  - `saveRawImages(gameSlug: string, files: File[]): Promise<string[]>` — 保存原始图片至 `storage/raw/<slug>/`
+  - `saveMarkdown(gameSlug: string, version: number, content: string): Promise<string>` — 保存 Markdown 至 `storage/output/<slug>/rules_V<n>.md`
+  - `saveSegments(gameSlug: string, version: number, segments: object[]): Promise<void>` — 保存段落快照至 `storage/output/<slug>/segments_V<n>.json`
+  - `updateManifest(gameSlug: string, meta: object): Promise<void>` — 更新 `storage_manifests/games.json`
+
 ### Dify API 封装（`webapp/lib/dify/`）
 - [ ] 实现 `workflow.ts`：
   - `runExtractorWorkflow(images: string[], gameType: string): Promise<string>` — 调用 Workflow API，处理轮询（异步模式）
@@ -63,6 +80,7 @@
   - `createDataset(name: string): Promise<string>` — 创建知识库，返回 `datasetId`
   - `uploadDocument(datasetId: string, markdown: string, gameName: string): Promise<string>` — 上传 Markdown，指定切分符 `\n# `，返回 `documentId`
   - `pollDocumentIndexing(datasetId: string, documentId: string): Promise<void>` — 轮询直至索引完成
+  - `exportSegments(datasetId: string, documentId: string): Promise<object[]>` — 导出已切好的段落列表（用于 segments.json 快照）
 
 ### 管理后台前端
 - [ ] 实现 `webapp/app/(admin)/dashboard/page.tsx`：游戏列表 + 任务状态表格
@@ -75,11 +93,18 @@
 - [ ] 实现 `webapp/app/api/tasks/route.ts`：
   - POST：接收游戏参数 → 创建 Task 记录 → 异步启动 ETL 流程
   - GET：按 `gameId` 或 `taskId` 查询任务状态（用于前端轮询）
-  - ETL 流程：下载/接收素材 → 调用 Workflow（分批）→ 合并 MD + 写入 `data_pipeline/output/` → 调用 Datasets API 建库 → 更新 `Game.datasetId` + Task 状态
+  - ETL 流程：
+    1. 下载/接收素材 → 写入 `storage/raw/<game_slug>/`
+    2. 分批调用 Extractor Workflow → 有序合并 Markdown → 写入 `storage/output/<game_slug>/rules_V<n>.md`
+    3. 调用 Datasets API 建库（上传 Markdown，切分符 `\n# `），轮询至索引完成
+    4. 调用 `exportSegments` 导出段落快照 → 写入 `storage/output/<game_slug>/segments_V<n>.json`
+    5. 更新 `Game.datasetId` + Task 状态为 Completed
+    6. 更新 `storage_manifests/games.json`
 
 ### 端到端测试
 - [ ] 通过 Admin UI 添加一款已有规则书图片的游戏，验证 ETL 全流程
-- [ ] 检查 `data_pipeline/output/` 中 Markdown 备份是否生成
+- [ ] 检查 `storage/output/<game_slug>/` 中 `rules_V1.md` 和 `segments_V1.json` 是否生成
+- [ ] 检查 `storage_manifests/games.json` 是否已更新
 - [ ] 在 Dify 控制台确认对应知识库已创建并索引完成
 
 ---
@@ -139,3 +164,31 @@
 - [ ] 完整走通一次用户旅程：Admin 添加游戏 → ETL 完成 → C 端进入聊天室 → 多轮问答正常
 - [ ] 将 Dify 所有应用/流配置导出更新至 `dify_config/`
 - [ ] 更新 README 快速开始章节，补充完整命令
+
+---
+
+## 数据管理 / 运维 (Data Ops)
+
+> 与 Phase 无关的运维操作，按需执行。
+
+### Docker Volume 备份（Layer 1）
+- [ ] 在服务器上创建 `backups/` 目录（加入 `.gitignore`）
+- [ ] 配置定期备份脚本（cron 或手动）：
+  ```bash
+  docker run --rm \
+    -v dify_db_data:/data/db \
+    -v dify_weaviate_data:/data/weaviate \
+    -v dify_storage_data:/data/storage \
+    -v $(pwd)/backups:/backup \
+    alpine tar czf /backup/dify-$(date +%Y%m%d).tar.gz /data
+  ```
+- [ ] 验证备份：解压后重启 Dify 确认知识库完整可用
+
+### 段落快照迁移（Layer 2）
+- [ ] 迁移时准备脚本：读取 `storage/output/<slug>/segments_V<n>.json` → 调用 Datasets API 自定义分段上传 → 仅重 Embedding（跳过 Chunking + High-quality 索引）
+- [ ] 迁移后更新 SQLite 中的 `dataset_id` 新值，并同步 `storage_manifests/games.json`
+
+### 规则书更新流程
+- [ ] 规则书勘误或新扩展包时：在 Admin UI 重新提交任务，版本号自增（`rules_V2.md`, `segments_V2.json`）
+- [ ] 旧版本文件保留，不覆盖，以便回滚
+- [ ] `storage_manifests/games.json` 中更新 `version` 字段，提交 Git

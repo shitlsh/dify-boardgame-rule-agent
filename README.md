@@ -151,7 +151,9 @@ cp .env.example .env
 | `DIFY_API_KEY` | Dify 应用的 API Key |
 | `DIFY_BASE_URL` | Dify 实例地址，如 `http://localhost/v1` |
 | `DIFY_DATASET_API_KEY` | Dify Knowledge Base API Key（与应用 Key 独立） |
+| `DIFY_CHATBOT_API_KEY` | Q&A Chatbot 应用的 API Key |
 | `GEMINI_API_KEY` | Google Gemini API Key（data_pipeline 脚本使用） |
+| `STORAGE_BASE_PATH` | 数据产物存储目录，默认 `./storage`（本地 demo） |
 
 **切勿将 `.env` 提交到 Git。**
 

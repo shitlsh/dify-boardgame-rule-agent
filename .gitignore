@@ -69,16 +69,25 @@ pnpm-debug.log*
 
 # -----------------------------------------------------------------------------
 # Original rulebook assets (PDF / images) — keep folder, not contents
+# POC scripts only; main storage is managed via storage/ (see below)
 # -----------------------------------------------------------------------------
 data_pipeline/raw/*
 data_pipeline/output/*
 !data_pipeline/raw/.gitkeep
+!data_pipeline/output/.gitkeep
 
 # -----------------------------------------------------------------------------
-# Large or machine-local pipeline outputs (uncomment if needed)
+# Runtime data artifacts — large files, not suitable for Git
+# storage/ is managed independently (local disk -> object storage)
+# storage_manifests/ IS committed (small JSON index only)
 # -----------------------------------------------------------------------------
-# data_pipeline/output/*
-# !data_pipeline/output/.gitkeep
+storage/raw/
+storage/output/
+
+# -----------------------------------------------------------------------------
+# Dify volume backups — never commit
+# -----------------------------------------------------------------------------
+backups/
 
 # -----------------------------------------------------------------------------
 # IDE & OS
