@@ -34,7 +34,9 @@ PROMPT_ROOT = DATA_PIPELINE_DIR / "prompt_templates"
 
 DEFAULT_MODEL = "gemini-3.1-pro-preview"
 DEFAULT_CATEGORY = "general"
-DEFAULT_HTTP_TIMEOUT_S = 20.0
+DEFAULT_HTTP_TIMEOUT_S = 60.0
+DEFAULT_FORCE_IPV4 = True
+DEFAULT_SKIP_MODEL_DISCOVERY = True
 
 # Flyway-style version suffix: any descriptive prefix, then _V<n>.md (case-insensitive V).
 # Examples: base_V1.md, extract_rules_V2.md
@@ -262,7 +264,7 @@ def validate_or_pick_model(
         requested_norm,
     )
     print_models(models)
-    logger.error("Use `--choose-model` to select from available models interactively.")
+    logger.error("Please choose another model via --model.")
     return None
 
 
@@ -355,6 +357,8 @@ def process_game_folder(
     game_dir: Path,
     output_category_root: Path,
     system_prompt: str,
+    *,
+    overwrite: bool = False,
 ) -> bool:
     """
     Process a whole game directory in one generate_content call.
@@ -372,6 +376,9 @@ def process_game_folder(
         len(assets),
     )
     out_path = output_md_path_for_game(output_category_root, game_dir.name)
+    if out_path.exists() and not overwrite:
+        logger.info("Skipping existing output: %s", out_path)
+        return False
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     uploaded_names: list[str] = []
@@ -404,32 +411,6 @@ def parse_args() -> argparse.Namespace:
         help=f"Gemini model id (default: {DEFAULT_MODEL})",
     )
     p.add_argument(
-        "--list-models",
-        action="store_true",
-        help="List models available for generateContent and exit.",
-    )
-    p.add_argument(
-        "--choose-model",
-        action="store_true",
-        help="Interactively choose a model from API-discovered model list.",
-    )
-    p.add_argument(
-        "--skip-model-discovery",
-        action="store_true",
-        help="Skip models.list pre-validation and use --model directly.",
-    )
-    p.add_argument(
-        "--http-timeout",
-        type=float,
-        default=DEFAULT_HTTP_TIMEOUT_S,
-        help=f"HTTP timeout in seconds for Gemini API requests (default: {DEFAULT_HTTP_TIMEOUT_S}).",
-    )
-    p.add_argument(
-        "--force-ipv4",
-        action="store_true",
-        help="Force IPv4 DNS resolution for Gemini API calls (useful when local IPv6 is broken).",
-    )
-    p.add_argument(
         "--category",
         default=DEFAULT_CATEGORY,
         help=f"Subfolder under raw/ and output/ (default: {DEFAULT_CATEGORY})",
@@ -443,6 +424,11 @@ def parse_args() -> argparse.Namespace:
             "(if omitted: pick *_V<n>.md with the largest n, Flyway-style)"
         ),
     )
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing output/<category>/<game_name>.md files.",
+    )
     return p.parse_args()
 
 
@@ -450,7 +436,7 @@ def main() -> int:
     load_env()
     args = parse_args()
 
-    if args.force_ipv4:
+    if DEFAULT_FORCE_IPV4:
         enable_ipv4_only_dns_resolution()
         logger.info("IPv4-only DNS resolution is enabled for this run.")
 
@@ -459,20 +445,7 @@ def main() -> int:
         logger.error("GEMINI_API_KEY is not set in the environment or .env")
         return 1
 
-    client = build_client(api_key=api_key, timeout_s=args.http_timeout)
-    if args.list_models:
-        _ = validate_or_pick_model(
-            client,
-            args.model,
-            choose_model=False,
-            list_only=True,
-        )
-        if _ is None:
-            return 1
-        logger.info(
-            "Model list printed. Note: account-level quota/remaining credits are not exposed by this endpoint."
-        )
-        return 0
+    client = build_client(api_key=api_key, timeout_s=DEFAULT_HTTP_TIMEOUT_S)
 
     raw_category = RAW_ROOT / args.category
     output_category = OUTPUT_ROOT / args.category
@@ -495,20 +468,14 @@ def main() -> int:
         logger.error("%s", exc)
         return 1
 
-    if args.skip_model_discovery:
-        if args.choose_model:
-            logger.error("--choose-model cannot be used with --skip-model-discovery.")
-            return 1
+    if DEFAULT_SKIP_MODEL_DISCOVERY:
         picked_model = normalize_model_name(args.model)
-        logger.warning(
-            "Skipping model discovery. Using requested model without pre-validation: %s",
-            picked_model,
-        )
+        logger.info("Using requested model without discovery: %s", picked_model)
     else:
         picked_model = validate_or_pick_model(
             client,
             args.model,
-            choose_model=args.choose_model,
+            choose_model=False,
             list_only=False,
             allow_discovery_failure_fallback=True,
         )
@@ -529,6 +496,7 @@ def main() -> int:
                 game_dir,
                 output_category,
                 SYSTEM_PROMPT,
+                overwrite=args.overwrite,
             )
             if did_process:
                 processed += 1
