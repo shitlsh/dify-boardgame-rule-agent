@@ -1,9 +1,11 @@
 # -----------------------------------------------------------------------------
 # Environment & secrets
 # -----------------------------------------------------------------------------
-.env
-.env.*
-!.env.example
+# data_pipeline scripts use data_pipeline/.env
+data_pipeline/.env
+data_pipeline/.env.*
+!data_pipeline/.env.example
+# webapp uses webapp/.env (also covered below)
 *.pem
 *.key
 secrets/

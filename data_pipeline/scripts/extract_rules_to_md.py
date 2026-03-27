@@ -26,7 +26,6 @@ from google.genai import types
 # -----------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_PIPELINE_DIR = SCRIPT_DIR.parent
-PROJECT_ROOT = DATA_PIPELINE_DIR.parent
 
 RAW_ROOT = DATA_PIPELINE_DIR / "raw"
 OUTPUT_ROOT = DATA_PIPELINE_DIR / "output"
@@ -67,7 +66,8 @@ logger = logging.getLogger("extract_rules_to_md")
 
 
 def load_env() -> None:
-    load_dotenv(PROJECT_ROOT / ".env")
+    # .env lives in data_pipeline/ (same level as this scripts/ directory)
+    load_dotenv(DATA_PIPELINE_DIR / ".env")
 
 
 def find_latest_versioned_prompt_filename(category_dir: Path) -> Optional[str]:
