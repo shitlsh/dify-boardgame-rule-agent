@@ -1,17 +1,39 @@
 # dify-boardgame-rule-agent
 
-基于 [Dify](https://github.com/langgenius/dify) 的「桌游规则问答」智能体项目。重点覆盖：**数据预处理**（规则书 → 结构化 Markdown → 知识库）、**确定性工具 API**（计分、校验、随机等），以及 **Dify 配置即代码（As Code）** 的可维护工作流。
+基于 [Dify](https://github.com/langgenius/dify) 的「桌游规则问答」全栈应用。覆盖完整产品链路：**ETL 数据管道**（规则书图片/PDF → Dify知识库）、**Next.js 全栈 Web 应用**（管理后台 + C端问答 UI）、以及**两步 RAG 问答引擎**（动态多游戏知识库路由 + 多轮对话）。
+
+详细架构设计与演进路径见 [blueprint.md](./blueprint.md)。
 
 ---
 
 ## 项目简介
 
-本仓库将桌游规则以 RAG 形式接入大模型对话，并通过本地 HTTP 工具弥补纯生成式模型在**精确计算、状态校验、可复现随机**等方面的不足。数据流大致为：
+用户可在 Web 界面选择一款桌游，与 AI 裁判进行多轮规则问答。系统通过两步 RAG 架构实现动态知识库路由：每次提问先检索该游戏专属知识库，再将规则原文片段注入 Dify Chatbot 生成回答，从而支持无限扩展游戏品类而无需修改 AI 配置。
 
-1. 离线：图片 / PDF 规则书 → Vision LLM 转写 → 标准 Markdown → Dify Datasets API 写入知识库。
-2. 在线：Dify Agent 检索知识库并结合 Tool 调用（OpenAPI）完成问答与规则相关操作。
+**核心数据流：**
 
-后续可在 `data_pipeline` 之上扩展带可视化的 **Admin Web** 后台；当前仓库以脚本与 API 骨架为主。
+```
+[规则书图片/PDF]
+     │
+     ▼
+[Dify Extractor Workflow]  ←─ 挂载 Glossary KB（术语增强）
+     │                         支持按游戏类型路由子流
+     ▼
+[结构化 Markdown]  ──backup──▶  data_pipeline/output/
+     │
+     ▼
+[Dify Datasets API]  ──创建──▶  每款游戏独立 Knowledge Base
+     │
+     ▼  dataset_id 存入 SQLite
+     
+[用户提问]
+     │
+     ▼  Step 1: Retrieve API → Top-K 规则片段
+     ▼  Step 2: 片段注入 → Context-Injected Chatbot (SSE)
+     │
+     ▼
+[流式回答 → 前端打字机效果]
+```
 
 ---
 
@@ -19,26 +41,14 @@
 
 | 层级 | 目录 / 组件 | 职责 |
 |------|----------------|------|
-| **大脑与知识库** | 外部部署的 Dify | Agent、RAG、工作流编排；通过 API 与知识库交互。 |
-| **数据准备** | `data_pipeline/` | 离线脚本：Vision LLM 转 Markdown、调用 Dify Datasets API 注入知识库。 |
-| **确定性工具** | `custom_tools_api/` | 本地 REST API（计分器、购卡条件、骰子等），提供 OpenAPI 供 Dify Agent 绑定为 Tool。 |
-| **配置固化** | `dify_config/` | 从 Dify 导出的应用 / 工作流 YAML，版本化与 Code Review。 |
-
-```mermaid
-flowchart LR
-  subgraph offline["离线"]
-    A[规则书 PDF/图片] --> B[data_pipeline]
-    B --> C[Markdown]
-    C --> D[Dify Datasets API]
-    D --> KB[(知识库)]
-  end
-  subgraph online["在线"]
-    U[用户] --> E[Dify Agent]
-    E --> KB
-    E --> F[custom_tools_api]
-    F --> E
-  end
-```
+| **前端展现层** | `webapp/app/(admin)/` | 管理后台：添加游戏、提交爬取/上传任务、查看 ETL 进度 |
+| **前端展现层** | `webapp/app/(chat)/` | C 端问答：游戏大厅 + 多轮聊天室（SSE 流式打字机） |
+| **业务逻辑层** | `webapp/app/api/` | Next.js API Routes：游戏 CRUD、ETL 任务调度、两步 RAG 问答 |
+| **数据层** | `webapp/prisma/` | Prisma + SQLite：Game / Task 表结构与迁移 |
+| **AI 引擎层** | 外部 Dify（Docker） | Extractor Workflow、规则知识库、Context-Injected Chatbot |
+| **ETL 脚本** | `data_pipeline/` | 离线爬取脚本（集石）、POC 阶段验证脚本（保留） |
+| **工具扩展** | `custom_tools_api/` | 未来为 Dify Agent 提供复杂计算工具（计分、骰子等），Demo 阶段留空 |
+| **配置固化** | `dify_config/` | Dify 应用/工作流导出 YAML，版本化管理 |
 
 ---
 
@@ -46,57 +56,126 @@ flowchart LR
 
 ```
 dify-boardgame-rule-agent/
-├── README.md                 # 本文件
-├── LICENSE                   # MIT 许可证
-├── .gitignore                # Git 忽略规则（含原始资源、环境变量、解释器缓存等）
+├── README.md
+├── blueprint.md              # 架构设计与演进路径文档
+├── TODO.md                   # Step-by-step 实施清单
+├── LICENSE
+├── .gitignore
+├── .env.example
 │
-├── data_pipeline/            # 数据准备层（离线）
-│   ├── raw/                  # 原始 PDF / 图片（目录保留，内容默认不提交）
-│   ├── output/               # 转换后的 Markdown 等中间/产出（可按需纳入版本控制）
-│   ├── prompt_templates/     # Vision LLM 转 Markdown 用的系统提示词模板
-│   └── scripts/              # 转换、清洗、入库脚本
+├── webapp/                   # Next.js 全栈应用（Phase 1–5 主战场）
+│   ├── app/
+│   │   ├── (admin)/          # 路由组：管理后台（不暴露在 URL 中）
+│   │   │   ├── layout.tsx
+│   │   │   ├── dashboard/    # 游戏列表 + 任务进度总览
+│   │   │   └── games/new/    # 添加游戏表单（URL / PDF / ZIP 上传）
+│   │   ├── (chat)/           # 路由组：C 端问答
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx      # 游戏大厅（卡片列表）
+│   │   │   └── games/[gameId]/  # 专属聊天室
+│   │   ├── api/
+│   │   │   ├── games/        # GET/POST 游戏元数据
+│   │   │   ├── tasks/        # ETL 任务创建与状态轮询
+│   │   │   └── chat/         # 两步 RAG 端点（SSE 流式响应）
+│   │   ├── layout.tsx
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── ui/               # Shadcn UI 基础组件
+│   │   ├── admin/            # 管理后台专用组件
+│   │   └── chat/             # 聊天室组件（消息列表、输入框、打字机等）
+│   ├── lib/
+│   │   ├── db.ts             # Prisma Client 单例
+│   │   ├── utils.ts
+│   │   └── dify/
+│   │       ├── workflow.ts   # Extractor Workflow API 调用（含分批逻辑）
+│   │       ├── datasets.ts   # Datasets API（建库、上传文档）
+│   │       └── chat.ts       # 两步 RAG：Retrieve → Context Inject → Chat
+│   ├── prisma/
+│   │   ├── schema.prisma     # Game / Task 数据模型
+│   │   └── migrations/
+│   ├── public/
+│   ├── package.json
+│   ├── next.config.ts
+│   ├── tailwind.config.ts
+│   └── tsconfig.json
 │
-├── custom_tools_api/         # 确定性工具层（本地 API）
-│   ├── openapi/              # OpenAPI YAML（供 Dify 导入为 Tool）
-│   └── src/                  # 服务实现（Python / Node 等，后续初始化时选定）
+├── data_pipeline/            # ETL 数据管道（离线脚本）
+│   ├── raw/                  # 原始规则书素材（.gitignore 忽略内容）
+│   ├── output/               # 转换后 Markdown（可按需提交）
+│   ├── prompt_templates/     # Gemini 提炼用 System Prompt（版本化管理）
+│   │   └── general/
+│   │       └── base_V1.md
+│   └── scripts/
+│       ├── fetch_gstone_rules.py   # 集石游戏规则书爬取
+│       └── extract_rules_to_md.py  # 图片/PDF → Markdown（Gemini，POC 验证用）
 │
-└── dify_config/              # 配置固化层（As Code）
-    ├── apps/                 # Dify 应用导出（若按应用维度管理）
-    └── workflows/            # 工作流 YAML 导出
+├── custom_tools_api/         # 未来扩展：Dify 工具 API（Demo 阶段留空）
+│   ├── openapi/              # OpenAPI YAML Spec
+│   └── src/                  # 工具服务实现
+│
+└── dify_config/              # Dify 配置即代码
+    ├── apps/                 # Chatbot / Agent 导出
+    └── workflows/            # Extractor Workflow 导出
 ```
-
-说明：
-
-- **`data_pipeline/raw`**：仅用于放置原始规则书素材；`.gitignore` 默认忽略该目录下除 `.gitkeep` 外的文件，避免大文件进入仓库。
-- **`data_pipeline/prompt_templates`**：存放 Vision LLM 将页面/图片转为结构化 Markdown 时使用的系统提示词（便于版本管理与 A/B 调优）。
-- **`custom_tools_api/openapi`**：与实现语言解耦，便于在 Dify 控制台直接填写 Base URL 与 Schema。
-- **`dify_config`**：建议与 Dify 实例变更同步更新，并在 PR 中说明变更原因。
 
 ---
 
-## 快速开始（占位）
+## 技术栈
 
-以下步骤在依赖与脚本落地后补充具体命令；当前为占位，便于后续一键对接。
+| 类别 | 技术 |
+|------|------|
+| 前端 | Next.js 15 (App Router), TailwindCSS, Shadcn UI |
+| 后端 | Next.js API Routes, Prisma ORM, SQLite |
+| AI 引擎 | Self-hosted Dify (Docker), Gemini (LLM/Vision) |
+| 数据脚本 | Python 3.10+, google-genai |
+
+---
+
+## 快速开始
 
 ### 1. 环境准备
 
-- 部署或可访问的 **Dify** 实例，并创建应用、知识库（Dataset）。
-- 准备 **Vision LLM** 的 API Key（与 `data_pipeline` 脚本中调用方式一致）。
-- （可选）Python 3.10+ 或 Node LTS，用于运行 `data_pipeline` 与 `custom_tools_api`。
+- 本地 Docker 运行 **Dify**（参考 [Dify 官方文档](https://docs.dify.ai/getting-started/install-self-hosted/docker-compose)）。
+- 准备 **Gemini API Key**（用于 Dify LLM 配置及 data_pipeline 脚本）。
+- Node.js 20+ 和 Python 3.10+。
 
 ### 2. 配置环境变量
 
 ```bash
 cp .env.example .env
-# 编辑 .env 填入真实密钥与端点
+# 编辑 .env 填入以下内容
 ```
 
-建议在 `.env` 中配置（名称仅供参考）：
-
-- `DIFY_API_KEY` / `DIFY_BASE_URL`：调用 Dify 与 Datasets API。
-- `VISION_API_KEY` / `VISION_BASE_URL`：Vision LLM 转写规则书。
+| 变量 | 说明 |
+|------|------|
+| `DIFY_API_KEY` | Dify 应用的 API Key |
+| `DIFY_BASE_URL` | Dify 实例地址，如 `http://localhost/v1` |
+| `DIFY_DATASET_API_KEY` | Dify Knowledge Base API Key（与应用 Key 独立） |
+| `GEMINI_API_KEY` | Google Gemini API Key（data_pipeline 脚本使用） |
 
 **切勿将 `.env` 提交到 Git。**
+
+### 3. 启动 Web 应用
+
+```bash
+cd webapp
+npm install
+npx prisma migrate dev
+npm run dev
+```
+
+### 4. 运行数据管道脚本（按需）
+
+```bash
+cd data_pipeline
+pip install -r requirements.txt
+
+# 爬取集石规则书图片
+python scripts/fetch_gstone_rules.py --url <集石页面URL> --game <游戏名>
+
+# 本地离线提炼 Markdown（POC 验证用）
+python scripts/extract_rules_to_md.py --category general
+```
 
 ### 3. 数据管道（占位）
 
