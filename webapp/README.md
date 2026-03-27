@@ -26,10 +26,11 @@
 
 | 功能 | 状态 | 路由 |
 |------|------|------|
-| 游戏大厅（卡片列表，仅展示已完成建库的游戏） | ⬜ 待实现 | `/` |
-| 游戏专属聊天室（多轮问答） | ⬜ 待实现 | `/games/[gameId]` |
-| 流式打字机效果（SSE 透传） | ⬜ 待实现 | — |
-| `conversation_id` 会话管理（前端 state） | ⬜ 待实现 | — |
+| 游戏大厅（卡片列表，仅展示已完成建库的游戏） | ✅ 已实现 | `/` |
+| 游戏专属聊天室（多轮问答） | ✅ 已实现 | `/games/[gameId]` |
+| 流式打字机效果（SSE 透传） | ✅ 已实现 | — |
+| `conversation_id` 会话管理（前端 state） | ✅ 已实现 | — |
+| 新对话重置按钮 | ✅ 已实现 | — |
 
 ### 核心库 / 服务层
 
@@ -40,8 +41,8 @@
 | Dify Extractor Workflow 调用（含分批） | ✅ 已实现 | `lib/dify/workflow.ts` |
 | Dify Datasets API（建库 / 上传 / 轮询 / 导出段落） | ✅ 已实现 | `lib/dify/datasets.ts` |
 | ETL 编排器（8 步全流程） | ✅ 已实现 | `lib/dify/etl.ts` |
-| 两步 RAG 问答（Retrieve + Chat） | ⬜ 待实现 | `lib/dify/chat.ts` |
-| 聊天 API Route（SSE 端点） | ⬜ 待实现 | `app/api/chat/route.ts` |
+| 两步 RAG 问答（Retrieve + Chat） | ✅ 已实现 | `lib/dify/chat.ts` |
+| 聊天 API Route（SSE 端点） | ✅ 已实现 | `app/api/chat/route.ts` |
 
 ---
 

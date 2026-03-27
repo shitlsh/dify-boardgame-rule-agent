@@ -68,6 +68,31 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 # -----------------------------------------------------------------------------
+# Next.js build output & runtime files — never commit
+# -----------------------------------------------------------------------------
+.next/
+out/
+webapp/.next/
+webapp/out/
+
+# -----------------------------------------------------------------------------
+# Local SQLite database & Prisma engine binaries
+# -----------------------------------------------------------------------------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+webapp/prisma/dev.db
+webapp/prisma/*.db
+
+# -----------------------------------------------------------------------------
+# Local .env files (webapp and root)
+# -----------------------------------------------------------------------------
+webapp/.env
+webapp/.env.*
+!webapp/.env.example
+
+# -----------------------------------------------------------------------------
 # Original rulebook assets (PDF / images) — keep folder, not contents
 # POC scripts only; main storage is managed via storage/ (see below)
 # -----------------------------------------------------------------------------
