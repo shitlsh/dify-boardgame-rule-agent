@@ -113,7 +113,7 @@ export function ChatRoomClient({ gameId, gameName }: ChatRoomClientProps) {
         <span className="text-2xl">🎲</span>
         <div>
           <h2 className="font-semibold text-gray-900 text-sm leading-tight">{gameName}</h2>
-          <p className="text-xs text-gray-400">AI 规则裁判</p>
+          <p className="text-xs text-gray-400">AI 规则助手</p>
         </div>
         {conversationId && (
           <button

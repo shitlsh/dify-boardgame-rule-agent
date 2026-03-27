@@ -25,7 +25,7 @@ export default async function LobbyPage() {
     <div className="max-w-4xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold text-gray-900 mb-2">选择游戏开始问答</h1>
       <p className="text-gray-500 text-sm mb-8">
-        由 AI 裁判基于官方规则书原文作答，不猜测、不编造
+        AI 基于官方规则书原文回答，有依据、不编造
       </p>
 
       {readyGames.length === 0 && pendingGames.length === 0 ? (
