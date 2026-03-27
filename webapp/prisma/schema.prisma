@@ -1,0 +1,36 @@
+// Prisma schema for boardgame-rule-agent webapp
+// SQLite is used for demo; swap to postgresql for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  coverUrl    String?
+  playerCount String?
+  gameType    String   @default("general")
+  datasetId   String?          // Dify Knowledge Base ID set after ETL completes
+  version     Int      @default(1) // increments on re-ingestion
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tasks       Task[]
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id])
+  // status: PENDING | PROCESSING | COMPLETED | FAILED
+  status    String   @default("PENDING")
+  errorMsg  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

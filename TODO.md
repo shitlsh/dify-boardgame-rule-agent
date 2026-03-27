@@ -14,30 +14,26 @@
 - [ ] 配置 Dify 的 LLM Provider → 添加 Gemini API Key
 
 ### Next.js 应用初始化
-- [ ] 在 `webapp/` 目录下运行 `npx create-next-app@latest . --typescript --tailwind --app` 初始化项目
-- [ ] 安装 Shadcn UI：`npx shadcn@latest init`
-- [ ] 安装 Prisma：`npm install prisma @prisma/client` 并运行 `npx prisma init --datasource-provider sqlite`
+- [x] `webapp/` 目录已初始化（package.json, next.config.ts, tsconfig.json, tailwind, postcss）
+- [x] 依赖已安装：`cd webapp && npm install`
+- [x] Prisma + SQLite 已配置
+- [ ] （可选）安装 Shadcn UI：`cd webapp && npx shadcn@latest init`
 
 ### 数据库设计
-- [ ] 在 `webapp/prisma/schema.prisma` 中定义 `Game` 模型：
-  - `id`, `name`, `coverUrl`, `playerCount`, `gameType`, `datasetId`, `createdAt`
-- [ ] 在 `webapp/prisma/schema.prisma` 中定义 `Task` 模型：
-  - `id`, `gameId`, `status`（Pending/Processing/Completed/Failed）, `errorMsg`, `createdAt`, `updatedAt`
-- [ ] 运行 `npx prisma migrate dev --name init` 生成首次迁移
-- [ ] 运行 `npx prisma generate` 生成 Prisma Client
+- [x] `webapp/prisma/schema.prisma` 已定义 `Game` 模型（id, name, slug, gameType, datasetId, version...）
+- [x] `webapp/prisma/schema.prisma` 已定义 `Task` 模型（id, gameId, status, errorMsg...）
+- [x] 已运行 `npx prisma migrate dev --name init`，`dev.db` 已生成
+- [x] Prisma Client 已生成
 
 ### 本地存储目录
-- [ ] 在项目根目录创建 `storage/raw/` 和 `storage/output/` 目录（加 `.gitkeep`）
-- [ ] 在项目根目录创建 `storage_manifests/` 目录，新建 `games.json`（初始内容 `{}`）
-- [ ] 确认 `.gitignore` 已忽略 `storage/` 内容、但保留 `storage_manifests/`
+- [x] `storage/raw/` 和 `storage/output/` 已创建（带 `.gitkeep`）
+- [x] `storage_manifests/games.json` 已创建
+- [x] `.gitignore` 已配置：忽略 `storage/*` 内容，保留 `storage_manifests/`
 
 ### 环境变量
-- [ ] 更新 `.env.example`，补充所有需要的变量键名：
-  - `DIFY_API_KEY`, `DIFY_BASE_URL`, `DIFY_DATASET_API_KEY`
-  - `DIFY_CHATBOT_API_KEY`
-  - `GEMINI_API_KEY`
-  - `STORAGE_BASE_PATH=./storage`
-- [ ] 在本地 `.env` 中填入真实值
+- [x] `.env.example` 已更新，包含所有变量键名和说明
+- [x] `webapp/.env` 已创建（本地开发用，已被 .gitignore 忽略）
+  - 默认 `DIFY_MOCK_MODE=true`，无需 Dify 即可运行完整 ETL 流程
 
 ---
 
@@ -65,41 +61,23 @@
 ## Phase 3：全自动 ETL 闭环 (Next.js + Dify API)
 
 ### 存储层封装（`webapp/lib/storage.ts`）
-- [ ] 实现 `storage.ts`：
-  - 读取 `STORAGE_BASE_PATH` 环境变量，统一管理路径
-  - `saveRawImages(gameSlug: string, files: File[]): Promise<string[]>` — 保存原始图片至 `storage/raw/<slug>/`
-  - `saveMarkdown(gameSlug: string, version: number, content: string): Promise<string>` — 保存 Markdown 至 `storage/output/<slug>/rules_V<n>.md`
-  - `saveSegments(gameSlug: string, version: number, segments: object[]): Promise<void>` — 保存段落快照至 `storage/output/<slug>/segments_V<n>.json`
-  - `updateManifest(gameSlug: string, meta: object): Promise<void>` — 更新 `storage_manifests/games.json`
+- [x] 实现 `storage.ts`：全部封装已完成
+  - `saveMarkdown`, `saveSegments`, `ensureRawDir`, `updateManifest` 均已实现
 
 ### Dify API 封装（`webapp/lib/dify/`）
-- [ ] 实现 `workflow.ts`：
-  - `runExtractorWorkflow(images: string[], gameType: string): Promise<string>` — 调用 Workflow API，处理轮询（异步模式）
-  - 实现分批逻辑：单批不超过 20 张图，多批结果有序拼接
-- [ ] 实现 `datasets.ts`：
-  - `createDataset(name: string): Promise<string>` — 创建知识库，返回 `datasetId`
-  - `uploadDocument(datasetId: string, markdown: string, gameName: string): Promise<string>` — 上传 Markdown，指定切分符 `\n# `，返回 `documentId`
-  - `pollDocumentIndexing(datasetId: string, documentId: string): Promise<void>` — 轮询直至索引完成
-  - `exportSegments(datasetId: string, documentId: string): Promise<object[]>` — 导出已切好的段落列表（用于 segments.json 快照）
+- [x] 实现 `workflow.ts`：已完成（Mock + Real 双模式，自动分批 ≤ 20 张）
+- [x] 实现 `datasets.ts`：已完成（Mock + Real，createDataset / uploadDocument / pollDocumentIndexing / exportSegments）
+- [x] 实现 `lib/dify/etl.ts`：ETL 流程编排已完成（含 8 个步骤）
 
 ### 管理后台前端
-- [ ] 实现 `webapp/app/(admin)/dashboard/page.tsx`：游戏列表 + 任务状态表格
-- [ ] 实现 `webapp/app/(admin)/games/new/page.tsx`：添加游戏表单
-  - 字段：游戏名称、游戏类型（下拉）、来源（URL / 上传 PDF / 上传 ZIP）
-  - 提交后调用 `/api/tasks` 创建任务，跳转返回 Dashboard 查看进度
+- [x] 实现 `webapp/app/(admin)/layout.tsx`：侧边栏导航 + Mock 模式指示器
+- [x] 实现 `webapp/app/(admin)/dashboard/page.tsx`：游戏列表 + 任务状态表格 + 自动轮询（TaskRefresher）
+- [x] 实现 `webapp/app/(admin)/games/new/page.tsx`：添加游戏表单（URL / ZIP / PDF ）
 
 ### 后端 API Routes
-- [ ] 实现 `webapp/app/api/games/route.ts`：GET（列表）、POST（创建游戏元数据）
-- [ ] 实现 `webapp/app/api/tasks/route.ts`：
-  - POST：接收游戏参数 → 创建 Task 记录 → 异步启动 ETL 流程
-  - GET：按 `gameId` 或 `taskId` 查询任务状态（用于前端轮询）
-  - ETL 流程：
-    1. 下载/接收素材 → 写入 `storage/raw/<game_slug>/`
-    2. 分批调用 Extractor Workflow → 有序合并 Markdown → 写入 `storage/output/<game_slug>/rules_V<n>.md`
-    3. 调用 Datasets API 建库（上传 Markdown，切分符 `\n# `），轮询至索引完成
-    4. 调用 `exportSegments` 导出段落快照 → 写入 `storage/output/<game_slug>/segments_V<n>.json`
-    5. 更新 `Game.datasetId` + Task 状态为 Completed
-    6. 更新 `storage_manifests/games.json`
+- [x] 实现 `webapp/app/api/games/route.ts`：GET（列表）
+- [x] 实现 `webapp/app/api/tasks/route.ts`：已完成（GET 查询 / POST 创建任务 + 触发 ETL）
+- [x] 实现 `webapp/app/api/tasks/[taskId]/route.ts`：单条任务状态查询
 
 ### 端到端测试
 - [ ] 通过 Admin UI 添加一款已有规则书图片的游戏，验证 ETL 全流程
