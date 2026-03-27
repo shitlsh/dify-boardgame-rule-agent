@@ -81,8 +81,10 @@ data_pipeline/output/*
 # storage/ is managed independently (local disk -> object storage)
 # storage_manifests/ IS committed (small JSON index only)
 # -----------------------------------------------------------------------------
-storage/raw/
-storage/output/
+storage/raw/*
+storage/output/*
+!storage/raw/.gitkeep
+!storage/output/.gitkeep
 
 # -----------------------------------------------------------------------------
 # Dify volume backups — never commit
