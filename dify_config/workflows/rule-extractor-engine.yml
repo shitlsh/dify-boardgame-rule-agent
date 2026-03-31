@@ -1,0 +1,310 @@
+app:
+  description: 通过传入桌游规则书图片，提取归纳并且输出标准化的规则说明模板，用于构建知识库
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: rule-extractor-engine
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/gemini:0.7.20@de0063a630a6d1b2c025fb84f3462ba5151fb60618309cd595c3f4711b1df847
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: knowledge-retrieval
+      id: 1774936549322-source-1774937224597-target
+      source: '1774936549322'
+      sourceHandle: source
+      target: '1774937224597'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1774937224597-source-1774937249213-target
+      source: '1774937224597'
+      sourceHandle: source
+      target: '1774937249213'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 1774937249213--1774937690606-target
+      source: '1774937249213'
+      sourceHandle: source
+      target: '1774937690606'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1774937690606-source-1774937816197-target
+      source: '1774937690606'
+      sourceHandle: source
+      target: '1774937816197'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          default: ''
+          hint: ''
+          label: rule_files
+          max_length: 10
+          options: []
+          placeholder: ''
+          required: true
+          type: file-list
+          variable: rule_files
+        - default: ''
+          hint: ''
+          label: game_name
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: game_name
+      height: 135
+      id: '1774936549322'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        dataset_ids:
+        - Zm47YUA00qS4N/ToTQ/vYGMOjkFhlJkcVhYEPIEQymVsRL/7SGZQs1hp/DyMOv6A
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: reranking_model
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector: []
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索
+        type: knowledge-retrieval
+      height: 90
+      id: '1774937224597'
+      position:
+        x: 382
+        y: 282
+      positionAbsolute:
+        x: 382
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1774937224597'
+          - result
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gemini-3.1-pro-preview
+          provider: langgenius/gemini/google
+        prompt_config:
+          jinja2_variables: []
+        prompt_template:
+        - edition_type: basic
+          id: 87952c4c-0352-4f58-9aec-35e818cf498e
+          role: system
+          text: "你现在是一位全球顶尖的“桌游规则讲解员”与“高级排版工程师”。\n当前正在处理的游戏是：{{game_name}}\n\n你的任务是阅读我提供的桌游说明书图片，并将其完美、精准地转化为结构化极强的\
+            \ Markdown 文档。这不仅仅是 OCR，更是逻辑重构。\n\n【语言与翻译绝对指令】\n1. 强制简体中文输出。\n2. 专业术语处理：遇到桌游通用机制名词，必须严格参考以下提供的【术语规范上下文】进行翻译。\n\
+            <术语规范上下文>\n{{#context#}}\n</术语规范上下文>\n遇到该游戏特有的专有名词，请翻译为信达雅的简体中文，首次出现时可用括号保留原文，如：“你可以花费2个行动点（Action\
+            \ Points）”。\n3. 语感调整：请用国内桌游玩家在听老手“讲规则”时那种自然、严谨且亲切的口吻来输出。\n\n【核心处理原则】\n\
+            1. 严格使用标题层级：使用 `#` 表示一级标题（如大阶段），`##` 表示二级标题，`###` 表示更细节的判定。\n2. 剥离无用信息：忽略目录、鸣谢、广告及纯背景故事。专注“怎么玩”、“怎么算分”、“怎么判定”。\n\
+            3. 专有名词绝对忠实：必须一字不差保留。\n4. 格式化特殊排版：\n   - 补充提示使用引用块 `> `。\n   - 计分表、花费表强制转换为标准的\
+            \ Markdown 表格。\n   - 具有先后顺序的操作使用有序列表 `1. 2. 3.`；无顺序的选项使用无序列表 `- `。\n5.\
+            \ 纯净输出：只输出 Markdown 源码，不要有任何客套话。\n\n【推荐的结构化参考模板（请根据实际游戏进行适配调整）】\n# 1.\
+            \ 游戏配件与初始设置\n## 1.1 配件清单\n## 1.2 公共区域设置\n## 1.3 玩家个人设置\n\n# 2. 游戏流程与回合结构\n\
+            ## 2.1 阶段一：[阶段名称]\n## 2.2 阶段二：[阶段名称]\n### 2.2.1 可选行动 A\n### 2.2.2 可选行动\
+            \ B\n\n# 3. 终局触发与计分规则\n## 3.1 游戏结束条件\n## 3.2 计分细则与平局判定\n\n# 4. 卡牌/板块特殊效果说明\
+            \ (如果有)"
+        selected: false
+        structured_output_enabled: false
+        title: 规则提取
+        type: llm
+        vision:
+          configs:
+            detail: high
+            variable_selector:
+            - '1774936549322'
+            - rule_files
+          enabled: true
+      height: 88
+      id: '1774937249213'
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gemini-3-flash-preview
+          provider: langgenius/gemini/google
+        prompt_template:
+        - id: dd907802-e059-43e1-9d1e-5bcc3b053101
+          role: system
+          text: "你是一位非常亲切、擅长带新的“桌游规则讲解员”。\n我将为你提供一份刚刚提取出来的完整桌游规则 Markdown 文本。请你从这份繁杂的规则中“抽丝剥茧”，为新手玩家生成一份【快速上手指南\
+            \ (Quick Start Guide)】。\n\n【生成原则与结构强制要求】\n这份指南必须遵循“MVP (最简可行玩法)”原则，用极其口语化、行动导向的句子编写，屏蔽所有边缘判定和复杂的平局计算。\n\
+            \n请严格按照以下 Markdown 结构输出：\n\n## \U0001F3AF 一句话目标\n(用最通俗的话说明：我们怎么才能赢？)\n\
+            \n## \U0001F4E6 核心配件认一认\n(列举新手面前最重要的2-3样配件，告诉他们是干嘛用的)\n\n## \U0001F504\
+            \ 回合三步曲\n(高度概括玩家在自己的回合必须做的动作，使用有序列表)\n1. \n2. \n3. \n\n## \U0001F4A1 讲解员的新手第一回合建议\n\
+            (给出一个具体的行动建议，比如“第一回合不知道干嘛，就先拿钱/抽牌”)\n\n## \U0001F4D6 边玩边学清单\n(明确告诉玩家：哪些规则现在不用管，等发生了/抽到特定牌了再去查完整规则)\n\
+            \n【完整规则原文如下】\n{{#1774937249213.text#}}"
+        selected: false
+        title: 创建快速开始手册
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: '1774937690606'
+      position:
+        x: 986
+        y: 282
+      positionAbsolute:
+        x: 986
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        outputs:
+        - value_selector:
+          - '1774937249213'
+          - text
+          value_type: string
+          variable: full_markdown
+        - value_selector:
+          - '1774937690606'
+          - text
+          value_type: string
+          variable: quick_start_guide
+        selected: false
+        title: 输出
+        type: end
+      height: 114
+      id: '1774937816197'
+      position:
+        x: 1288
+        y: 282
+      positionAbsolute:
+        x: 1288
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: -0.9679693835250873
+      y: 233.9171848359979
+      zoom: 0.4664333297700196
+  rag_pipeline_variables: []
