@@ -1,13 +1,10 @@
-import JSZip from 'jszip'
 import sharp from 'sharp'
-import { PDFDocument } from 'pdf-lib'
+import { fromBuffer } from 'pdf2pic'
 import { load as loadHtml } from 'cheerio'
 import { WorkflowFileInput } from '@/lib/dify/workflow'
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024
-const MAX_FILES = 10
-
-const IMAGE_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+const MAX_IMAGES = 20
 
 type ImageAsset = {
   name: string
@@ -46,49 +43,12 @@ async function optimizeImage(bytes: Buffer, level: { maxEdge: number; quality: n
     .toBuffer()
 }
 
-async function renderPdfBytes(images: ImageAsset[]): Promise<Buffer> {
-  const pdf = await PDFDocument.create()
-  for (const image of images) {
-    const embedded = await pdf.embedJpg(image.bytes)
-    const page = pdf.addPage([embedded.width, embedded.height])
-    page.drawImage(embedded, {
-      x: 0,
-      y: 0,
-      width: embedded.width,
-      height: embedded.height,
-    })
-  }
-  return Buffer.from(await pdf.save())
-}
-
-async function buildPdfFromImages(images: ImageAsset[], fileName: string): Promise<WorkflowFileInput> {
-  const bytes = await renderPdfBytes(images)
-  ensureFileSize(bytes, fileName)
-  return { name: fileName, bytes, mimeType: 'application/pdf' }
-}
-
-async function groupImagesToPdfChunks(images: ImageAsset[]): Promise<WorkflowFileInput[]> {
-  const files: WorkflowFileInput[] = []
-  let chunk: ImageAsset[] = []
-  let startIndex = 1
-
-  for (let i = 0; i < images.length; i++) {
-    const current = images[i]
-    const candidate = [...chunk, current]
-    const candidatePdfBytes = await renderPdfBytes(candidate)
-    if (candidatePdfBytes.byteLength > MAX_FILE_BYTES && chunk.length > 0) {
-      files.push(await buildPdfFromImages(chunk, `rules_part_${startIndex}.pdf`))
-      startIndex = i + 1
-      chunk = [current]
-      continue
-    }
-    chunk = candidate
-  }
-
-  if (chunk.length > 0) {
-    files.push(await buildPdfFromImages(chunk, `rules_part_${startIndex}.pdf`))
-  }
-  return files
+function toImageInput(images: ImageAsset[]): WorkflowFileInput[] {
+  return images.map((img) => ({
+    name: img.name,
+    bytes: img.bytes,
+    mimeType: 'image/jpeg',
+  }))
 }
 
 async function packImages(images: ImageAsset[]): Promise<WorkflowFileInput[]> {
@@ -96,19 +56,28 @@ async function packImages(images: ImageAsset[]): Promise<WorkflowFileInput[]> {
     const optimized: ImageAsset[] = []
     for (let i = 0; i < images.length; i++) {
       const image = images[i]
-      const output = await optimizeImage(image.bytes, level)
+      let output: Buffer
+      try {
+        output = await optimizeImage(image.bytes, level)
+      } catch {
+        throw new Error(
+          `图片 ${image.name} 格式无法解析（Input buffer contains unsupported image format）。` +
+            '若是 macOS 压缩包，请移除 __MACOSX/._* 文件后重试。',
+        )
+      }
       optimized.push({
         name: normalizeImageName(image.name, i).replace(/\.\w+$/, '.jpg'),
         bytes: output,
       })
     }
 
-    const files = await groupImagesToPdfChunks(optimized)
-    if (files.length <= MAX_FILES) return files
+    const asImages = toImageInput(optimized)
+    const imageFitsLimits = asImages.every((f) => f.bytes.byteLength <= MAX_FILE_BYTES)
+    if (imageFitsLimits) return asImages
   }
 
   throw new Error(
-    '规则书内容过大，自动压缩后仍超过 10 文件限制。请拆分为多个任务（例如基础规则与扩展规则分开上传）。',
+    '规则图片过大，自动压缩后仍有单张超过 15MB。请降低图片分辨率后重试。',
   )
 }
 
@@ -116,22 +85,59 @@ function isImagePath(filePath: string) {
   return /\.(png|jpe?g|webp)$/i.test(filePath)
 }
 
+function getPageNo(name: string): number | null {
+  const base = name.split('/').pop() ?? name
+  const match = base.match(/^(\d+)_/)
+  if (!match) return null
+  return Number(match[1])
+}
+
 function sortByName<T extends { name: string }>(items: T[]): T[] {
   return items.sort((a, b) => a.name.localeCompare(b.name, 'en'))
 }
 
-async function extractImagesFromZip(zipBytes: Buffer): Promise<ImageAsset[]> {
-  const zip = await JSZip.loadAsync(zipBytes)
-  const imageEntries: ImageAsset[] = []
-  const files = Object.values(zip.files).filter((f) => !f.dir && isImagePath(f.name))
-  const ordered = files.sort((a, b) => a.name.localeCompare(b.name, 'en'))
-  for (const f of ordered) {
-    imageEntries.push({ name: f.name.split('/').pop() ?? f.name, bytes: await f.async('nodebuffer') })
+function validateAndSortPageNamed(images: ImageAsset[]): ImageAsset[] {
+  const withPage = images.map((i) => ({ ...i, pageNo: getPageNo(i.name) }))
+  const invalid = withPage.filter((i) => i.pageNo == null)
+  if (invalid.length > 0) {
+    throw new Error(
+      `图片命名需以页码开头，例如 1_xxx.jpg 或 01_xxx.jpg。以下文件不符合：${invalid
+        .slice(0, 3)
+        .map((v) => v.name)
+        .join(', ')}`,
+    )
   }
-  if (imageEntries.length === 0) {
-    throw new Error('ZIP 中未找到可处理图片（仅支持 png/jpg/jpeg/webp）')
+  return withPage
+    .sort((a, b) => (a.pageNo as number) - (b.pageNo as number) || a.name.localeCompare(b.name, 'en'))
+    .map(({ name, bytes }) => ({ name, bytes }))
+}
+
+async function rasterizePdfToImages(pdfBytes: Buffer, fileName: string): Promise<ImageAsset[]> {
+  const convert = fromBuffer(pdfBytes, {
+    density: 180,
+    format: 'jpeg',
+    width: 1800,
+    height: 2400,
+    quality: 85,
+  })
+  let pages: Array<{ page: number; buffer?: Buffer }> = []
+  try {
+    pages = (await convert.bulk(-1, { responseType: 'buffer' })) as Array<{
+      page: number
+      buffer?: Buffer
+    }>
+  } catch {
+    throw new Error(
+      'PDF 转图片失败。请确认系统已安装 GraphicsMagick（pdf2pic 依赖），或先手动转为图片上传。',
+    )
   }
-  return imageEntries
+
+  const valid = pages.filter((p) => p.buffer)
+  if (valid.length === 0) throw new Error(`PDF ${fileName} 未转换出任何页面图片`)
+  return valid.map((p) => ({
+    name: `${String(p.page).padStart(2, '0')}_${fileName.replace(/\.pdf$/i, '')}.jpg`,
+    bytes: p.buffer as Buffer,
+  }))
 }
 
 async function fetchRuleImagesFromGstone(url: string): Promise<ImageAsset[]> {
@@ -177,21 +183,33 @@ async function fetchRuleImagesFromGstone(url: string): Promise<ImageAsset[]> {
 export async function prepareWorkflowFilesFromSource(params: {
   sourceType: string
   sourceUrl?: string | null
-  sourceFile?: File | null
+  sourceFiles?: File[]
 }): Promise<WorkflowFileInput[]> {
-  const { sourceType, sourceUrl, sourceFile } = params
+  const { sourceType, sourceUrl, sourceFiles = [] } = params
 
   if (sourceType === 'pdf') {
+    const sourceFile = sourceFiles[0]
     if (!sourceFile) throw new Error('请上传 PDF 文件')
-    const bytes = Buffer.from(await sourceFile.arrayBuffer())
-    ensureFileSize(bytes, sourceFile.name)
-    return [{ name: sourceFile.name || 'rules.pdf', bytes, mimeType: 'application/pdf' }]
+    const pdfBytes = Buffer.from(await sourceFile.arrayBuffer())
+    const imageAssets = await rasterizePdfToImages(pdfBytes, sourceFile.name || 'rules.pdf')
+    if (imageAssets.length > MAX_IMAGES) {
+      throw new Error(`PDF 页数超过当前上限（${imageAssets.length}/${MAX_IMAGES}）`)
+    }
+    return packImages(imageAssets)
   }
 
   let imageAssets: ImageAsset[] = []
-  if (sourceType === 'zip') {
-    if (!sourceFile) throw new Error('请上传 ZIP 文件')
-    imageAssets = await extractImagesFromZip(Buffer.from(await sourceFile.arrayBuffer()))
+  if (sourceType === 'images') {
+    if (sourceFiles.length === 0) throw new Error('请至少上传一张图片')
+    imageAssets = []
+    for (const file of sourceFiles) {
+      if (!isImagePath(file.name)) continue
+      imageAssets.push({
+        name: file.name,
+        bytes: Buffer.from(await file.arrayBuffer()),
+      })
+    }
+    imageAssets = validateAndSortPageNamed(imageAssets)
   } else if (sourceType === 'url') {
     if (!sourceUrl) throw new Error('请提供集石 URL')
     imageAssets = await fetchRuleImagesFromGstone(sourceUrl)
@@ -200,15 +218,10 @@ export async function prepareWorkflowFilesFromSource(params: {
   }
 
   const ordered = sortByName(imageAssets)
-  const files = await packImages(ordered)
-  files.forEach((f) => {
-    if (!IMAGE_MIME.has(f.mimeType) && f.mimeType !== 'application/pdf') {
-      throw new Error(`不支持的文件类型: ${f.mimeType}`)
-    }
-    ensureFileSize(f.bytes, f.name)
-  })
-  if (files.length > MAX_FILES) {
-    throw new Error(`文件数量超过限制（${files.length}/${MAX_FILES}）`)
+  if (ordered.length > MAX_IMAGES) {
+    throw new Error(`图片数量超过当前上限（${ordered.length}/${MAX_IMAGES}）`)
   }
+  const files = await packImages(ordered)
+  files.forEach((f) => ensureFileSize(f.bytes, f.name))
   return files
 }

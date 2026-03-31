@@ -28,10 +28,20 @@ export async function POST(req: NextRequest) {
   const gameType = (formData.get('gameType') as string | null) ?? 'general'
   const sourceType = (formData.get('sourceType') as string | null) ?? 'url'
   const sourceUrl = (formData.get('sourceUrl') as string | null)?.trim() ?? null
-  const sourceFile = (formData.get('sourceFile') as File | null) ?? null
+  const sourceFiles = formData
+    .getAll('sourceFiles')
+    .filter((v): v is File => v instanceof File && v.size > 0)
 
   if (!gameName) {
     return NextResponse.json({ error: '游戏名称不能为空' }, { status: 400 })
+  }
+
+  let ruleFiles
+  try {
+    ruleFiles = await prepareWorkflowFilesFromSource({ sourceType, sourceUrl, sourceFiles })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '规则文件预处理失败'
+    return NextResponse.json({ error: message }, { status: 400 })
   }
 
   const slug = slugify(gameName)
@@ -49,14 +59,6 @@ export async function POST(req: NextRequest) {
   const task = await prisma.task.create({
     data: { gameId: game.id, status: 'PENDING' },
   })
-
-  let ruleFiles
-  try {
-    ruleFiles = await prepareWorkflowFilesFromSource({ sourceType, sourceUrl, sourceFile })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '规则文件预处理失败'
-    return NextResponse.json({ error: message }, { status: 400 })
-  }
 
   // Fire-and-forget ETL — non-blocking response to client.
   // NOTE: This works for local `next dev`. On serverless (Vercel/Edge), requests

@@ -13,12 +13,12 @@
 | 功能 | 状态 | 路由 |
 |------|------|------|
 | 游戏库总览（列表 + 任务状态 + 自动刷新） | ✅ 已实现 | `/dashboard` |
-| 添加游戏表单（URL / ZIP / PDF 三种来源） | ✅ 已实现 | `/games/new` |
+| 添加游戏表单（URL / 多图 / PDF 三种来源） | ✅ 已实现 | `/games/new` |
 | ETL 任务触发与状态轮询 API | ✅ 已实现 | `POST /api/tasks` |
 | 单任务状态查询 API | ✅ 已实现 | `GET /api/tasks/[taskId]` |
 | 游戏列表查询 API | ✅ 已实现 | `GET /api/games` |
 | URL 来源实际爬取（调用集石爬虫） | ⬜ 待实现 | — |
-| ZIP / PDF 文件解压与图片转换 | ⬜ 待实现 | — |
+| PDF 逐页渲染为图片后送入 Extractor | ✅ 已实现 | `lib/dify/input-preprocess.ts` |
 | 游戏封面上传 / 编辑 | ⬜ 待实现 | — |
 | ETL 进度实时推送（WebSocket / SSE） | ⬜ 待实现（当前为 2.5s 轮询） | — |
 
@@ -205,7 +205,8 @@ DIFY_CHATBOT_API_KEY=app-xxxxxxxx   # Phase 4 完成后填入
 
 ## Extractor 输入限制策略
 
-- 后端会把 URL/ZIP/PDF 来源统一处理为 Workflow `rule_files` 输入。
-- 对 URL/ZIP 图片源执行自适应压缩并合并为 PDF 分片，目标约束为：最多 10 个文件、单文件不超过 15MB。
+- 后端会把 URL/多图/PDF 来源统一处理为 Workflow `rule_files` 图片输入。
+- PDF 会在服务端逐页光栅化为 JPG 后再送入 workflow（不直接向模型传 PDF）。
+- 当前总页数上限为 20 张（URL 抓取 / 多图上传 / PDF 转图统一执行）。
 - 当自动压缩后仍无法满足约束时，API 会返回可操作错误，提示按规则书章节拆分任务。
 - `quick_start_guide` 会保存到数据库并在聊天页右侧作为可折叠“保姆面板”展示，不会写入知识库。

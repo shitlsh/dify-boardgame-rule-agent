@@ -15,8 +15,8 @@ const GAME_TYPES = [
 
 const SOURCE_TYPES = [
   { value: 'url', label: '集石 URL（自动爬取规则书图片）' },
-  { value: 'zip', label: '上传图片压缩包 (.zip)' },
-  { value: 'pdf', label: '上传 PDF 规则书' },
+  { value: 'images', label: '上传多张规则书图片' },
+  { value: 'pdf', label: '上传 PDF 规则书（服务端转图片）' },
 ]
 
 export default function NewGamePage() {
@@ -113,16 +113,21 @@ export default function NewGamePage() {
           </div>
         )}
 
-        {(sourceType === 'zip' || sourceType === 'pdf') && (
+        {(sourceType === 'images' || sourceType === 'pdf') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               上传文件 <span className="text-red-500">*</span>
             </label>
             <input
-              name="sourceFile"
+              name="sourceFiles"
               type="file"
               required
-              accept={sourceType === 'zip' ? '.zip,application/zip' : '.pdf,application/pdf'}
+              multiple={sourceType === 'images'}
+              accept={
+                sourceType === 'images'
+                  ? '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'
+                  : '.pdf,application/pdf'
+              }
               className="w-full text-sm text-gray-600
                 file:mr-3 file:py-2 file:px-3
                 file:rounded-lg file:border-0
@@ -131,9 +136,9 @@ export default function NewGamePage() {
                 hover:file:bg-indigo-100"
             />
             <p className="mt-1 text-xs text-gray-400">
-              {sourceType === 'zip'
-                ? 'ZIP 内图片将按文件名排序后送入 AI 提炼流程'
-                : 'PDF 每页将转换为图片后送入 AI 提炼流程（Mock 模式下跳过）'}
+              {sourceType === 'images'
+                ? '支持多图上传；文件名需以页码开头（如 1_xxx.jpg、01_xxx.png），最多 20 张'
+                : 'PDF 将在服务端逐页渲染为 JPG 后送入 AI 提炼流程，最多 20 页'}
             </p>
           </div>
         )}

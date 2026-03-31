@@ -121,25 +121,6 @@ async function uploadWorkflowFile(file: WorkflowFileInput): Promise<Record<strin
   }
 }
 
-async function pollWorkflowTask(taskId: string): Promise<ExtractorWorkflowResult> {
-  for (let i = 0; i < 30; i++) {
-    await sleep(2000)
-    const res = await fetch(`${DIFY_BASE_URL}/workflows/tasks/${taskId}`, {
-      headers: { Authorization: `Bearer ${WORKFLOW_API_KEY}` },
-    })
-    if (!res.ok) throw new Error(`Workflow poll error: ${res.status}`)
-    const data = await res.json()
-    if (data.status === 'succeeded') {
-      return {
-        fullMarkdown: (data.outputs?.full_markdown as string) ?? '',
-        quickStartGuide: (data.outputs?.quick_start_guide as string) ?? '',
-      }
-    }
-    if (data.status === 'failed') throw new Error(`Workflow failed: ${data.error ?? 'unknown'}`)
-  }
-  throw new Error('Workflow polling timeout after 60s')
-}
-
 /**
  * Run the extractor workflow using already-prepared file inputs.
  */
@@ -178,12 +159,12 @@ export async function runExtractorWorkflow(
   if (!res.ok) throw new Error(`Workflow API error ${res.status}: ${await res.text()}`)
 
   const data = await res.json()
-  if (data.task_id) {
-    return await pollWorkflowTask(data.task_id as string)
+
+  const fullMarkdown = (data.data?.outputs?.full_markdown as string) ?? ''
+  const quickStartGuide = (data.data?.outputs?.quick_start_guide as string) ?? ''
+  if (!fullMarkdown) {
+    throw new Error(`Workflow succeeded but full_markdown is empty: ${JSON.stringify(data)}`)
   }
 
-  return {
-    fullMarkdown: (data.data?.outputs?.full_markdown as string) ?? '',
-    quickStartGuide: (data.data?.outputs?.quick_start_guide as string) ?? '',
-  }
+  return { fullMarkdown, quickStartGuide }
 }

@@ -83,8 +83,6 @@ webapp/out/
 *.db-journal
 *.db-wal
 *.db-shm
-webapp/prisma/dev.db
-webapp/prisma/*.db
 
 # -----------------------------------------------------------------------------
 # Local .env files (webapp and root)
