@@ -14,6 +14,7 @@
  */
 
 import { sleep } from '@/lib/utils'
+import { difyDatasetConfig } from '@/lib/dify/config'
 
 const MOCK = process.env.DIFY_MOCK_MODE === 'true'
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL ?? 'http://localhost/v1'
@@ -56,7 +57,7 @@ async function* mockStream(datasetId: string): AsyncGenerator<ChatChunk> {
 }
 
 /** Step 1: Retrieve relevant rule chunks from the game's Knowledge Base */
-async function retrieveChunks(datasetId: string, query: string, topK = 5): Promise<string[]> {
+async function retrieveChunks(datasetId: string, query: string, topK = difyDatasetConfig.retrieval.topK): Promise<string[]> {
   const res = await fetch(`${DIFY_BASE_URL}/datasets/${datasetId}/retrieve`, {
     method: 'POST',
     headers: {
@@ -66,11 +67,11 @@ async function retrieveChunks(datasetId: string, query: string, topK = 5): Promi
     body: JSON.stringify({
       query,
       retrieval_model: {
-        search_method: 'hybrid_search',
-        reranking_enable: true,
+        search_method: difyDatasetConfig.retrieval.searchMethod,
+        reranking_enable: difyDatasetConfig.retrieval.rerankingEnable,
         top_k: topK,
-        score_threshold_enabled: true,
-        score_threshold: 0.3,
+        score_threshold_enabled: difyDatasetConfig.retrieval.scoreThresholdEnabled,
+        score_threshold: difyDatasetConfig.retrieval.scoreThreshold,
       },
     }),
   })

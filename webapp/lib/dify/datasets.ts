@@ -9,6 +9,7 @@
  */
 
 import { sleep } from '@/lib/utils'
+import { difyDatasetConfig } from '@/lib/dify/config'
 
 const MOCK = process.env.DIFY_MOCK_MODE === 'true'
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL ?? 'http://localhost/v1'
@@ -37,7 +38,7 @@ export async function createDataset(name: string): Promise<string> {
   const res = await fetch(`${DIFY_BASE_URL}/datasets`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ name, permission: 'only_me' }),
+    body: JSON.stringify({ name, permission: difyDatasetConfig.create.permission }),
   })
   if (!res.ok) throw new Error(`createDataset failed ${res.status}: ${await res.text()}`)
   const data = await res.json()
@@ -66,17 +67,17 @@ export async function uploadDocument(
       body: JSON.stringify({
         name: docName,
         text: markdown,
-        indexing_technique: 'high_quality',
+        indexing_technique: difyDatasetConfig.document.indexingTechnique,
         process_rule: {
-          mode: 'custom',
+          mode: difyDatasetConfig.document.processMode,
           rules: {
             pre_processing_rules: [
-              { id: 'remove_extra_spaces', enabled: true },
-              { id: 'remove_urls_emails', enabled: false },
+              { id: 'remove_extra_spaces', enabled: difyDatasetConfig.document.removeExtraSpaces },
+              { id: 'remove_urls_emails', enabled: difyDatasetConfig.document.removeUrlsEmails },
             ],
             segmentation: {
-              separator: '\n# ',
-              max_tokens: 1000,
+              separator: difyDatasetConfig.document.segmentationSeparator,
+              max_tokens: difyDatasetConfig.document.segmentationMaxTokens,
             },
           },
         },

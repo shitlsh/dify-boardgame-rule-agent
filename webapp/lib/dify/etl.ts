@@ -16,26 +16,26 @@
  */
 
 import { prisma } from '@/lib/db'
-import { runExtractorWorkflow } from '@/lib/dify/workflow'
+import { runExtractorWorkflow, WorkflowFileInput } from '@/lib/dify/workflow'
 import {
   createDataset,
   uploadDocument,
   pollDocumentIndexing,
   exportSegments,
 } from '@/lib/dify/datasets'
-import { saveMarkdown, saveSegments, updateManifest } from '@/lib/storage'
+import { saveMarkdown, saveQuickStartGuide, saveSegments, updateManifest } from '@/lib/storage'
 
 export async function runETL(
   taskId: string,
   gameId: string,
   params: {
     slug: string
-    gameType: string
-    imageBase64s: string[]
+    gameName: string
+    ruleFiles: WorkflowFileInput[]
     version: number
   },
 ) {
-  const { slug, gameType, imageBase64s, version } = params
+  const { slug, gameName, ruleFiles, version } = params
 
   async function setStatus(status: string, errorMsg?: string) {
     await prisma.task.update({
@@ -48,10 +48,16 @@ export async function runETL(
     await setStatus('PROCESSING')
 
     // Step 1: Extract Markdown
-    const markdown = await runExtractorWorkflow(imageBase64s, gameType)
+    const extractorOutput = await runExtractorWorkflow(ruleFiles, gameName)
+    const markdown = extractorOutput.fullMarkdown
 
     // Step 2: Backup Markdown to local storage
-    saveMarkdown(slug, version, markdown)
+    const rulesMarkdownPath = saveMarkdown(slug, version, markdown)
+    const quickStartGuide = extractorOutput.quickStartGuide?.trim() ?? ''
+    let quickStartGuidePath: string | null = null
+    if (quickStartGuide) {
+      quickStartGuidePath = saveQuickStartGuide(slug, version, quickStartGuide)
+    }
 
     // Step 3: Create Dify Knowledge Base
     const datasetId = await createDataset(`${slug}-v${version}`)
@@ -69,7 +75,14 @@ export async function runETL(
     // Step 7: Persist datasetId to Game record
     await prisma.game.update({
       where: { id: gameId },
-      data: { datasetId, version, updatedAt: new Date() },
+      data: {
+        datasetId,
+        version,
+        quickStartGuide: quickStartGuide || null,
+        rulesMarkdownPath,
+        quickStartGuidePath,
+        updatedAt: new Date(),
+      },
     })
 
     // Step 8: Update lightweight manifest index

@@ -37,6 +37,15 @@ export function saveMarkdown(slug: string, version: number, content: string): st
   return filePath
 }
 
+/** Save quick-start guide to storage/output/<slug>/quick_start_V<n>.md */
+export function saveQuickStartGuide(slug: string, version: number, content: string): string {
+  const dir = path.join(BASE, 'output', slug)
+  ensureDir(dir)
+  const filePath = path.join(dir, `quick_start_V${version}.md`)
+  fs.writeFileSync(filePath, content, 'utf-8')
+  return filePath
+}
+
 /** Save Dify segment snapshot to storage/output/<slug>/segments_V<n>.json */
 export function saveSegments(slug: string, version: number, segments: unknown[]): void {
   const dir = path.join(BASE, 'output', slug)

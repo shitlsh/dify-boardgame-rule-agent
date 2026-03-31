@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model Game {
@@ -18,6 +17,9 @@ model Game {
   playerCount String?
   gameType    String   @default("general")
   datasetId   String?          // Dify Knowledge Base ID set after ETL completes
+  quickStartGuide String?      // Workflow output for UI helper sidebar
+  rulesMarkdownPath String?    // local backup path: storage/output/<slug>/rules_V<n>.md
+  quickStartGuidePath String?  // local backup path: storage/output/<slug>/quick_start_V<n>.md
   version     Int      @default(1) // increments on re-ingestion
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

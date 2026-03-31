@@ -7,8 +7,8 @@
 ## Phase 1：基础设施搭建 (Infra & Foundation)
 
 ### Dify 环境
-- [ ] 使用 Docker Compose 在本地启动 Dify（参考官方文档）
-- [ ] 登录 Dify 控制台，熟悉界面：应用、知识库、工作流入口
+- [x] 使用 Docker Compose 在本地启动 Dify（参考官方文档）
+- [x] 登录 Dify 控制台，熟悉界面：应用、知识库、工作流入口
 - [ ] 在 Dify 中创建一个 API Key（应用级），记录至 `.env`
 - [ ] 在 Dify 中创建一个 Knowledge Base API Key（独立），记录至 `.env`
 - [ ] 配置 Dify 的 LLM Provider → 添加 Gemini API Key

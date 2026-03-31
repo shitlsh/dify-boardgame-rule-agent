@@ -30,5 +30,11 @@ export default async function ChatRoomPage({ params }: Props) {
     )
   }
 
-  return <ChatRoomClient gameId={game.id} gameName={game.name} />
+  return (
+    <ChatRoomClient
+      gameId={game.id}
+      gameName={game.name}
+      quickStartGuide={game.quickStartGuide ?? ''}
+    />
+  )
 }

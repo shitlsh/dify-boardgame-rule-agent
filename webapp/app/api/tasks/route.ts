@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
 import { runETL } from '@/lib/dify/etl'
+import { prepareWorkflowFilesFromSource } from '@/lib/dify/input-preprocess'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -26,6 +27,8 @@ export async function POST(req: NextRequest) {
   const gameName = (formData.get('gameName') as string | null)?.trim()
   const gameType = (formData.get('gameType') as string | null) ?? 'general'
   const sourceType = (formData.get('sourceType') as string | null) ?? 'url'
+  const sourceUrl = (formData.get('sourceUrl') as string | null)?.trim() ?? null
+  const sourceFile = (formData.get('sourceFile') as File | null) ?? null
 
   if (!gameName) {
     return NextResponse.json({ error: '游戏名称不能为空' }, { status: 400 })
@@ -47,20 +50,21 @@ export async function POST(req: NextRequest) {
     data: { gameId: game.id, status: 'PENDING' },
   })
 
-  // --- Image preparation ---
-  // In mock mode: imageBase64s is empty; the mock workflow ignores it.
-  // In real mode with URL source: the ETL would trigger the gstone scraper here.
-  // In real mode with ZIP/PDF: files would be extracted/converted to base64 here.
-  // TODO (Phase 3 real mode): implement URL crawling and ZIP/PDF extraction.
-  const imageBase64s: string[] = []
+  let ruleFiles
+  try {
+    ruleFiles = await prepareWorkflowFilesFromSource({ sourceType, sourceUrl, sourceFile })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '规则文件预处理失败'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
 
   // Fire-and-forget ETL — non-blocking response to client.
   // NOTE: This works for local `next dev`. On serverless (Vercel/Edge), requests
   // are terminated after response; use a proper job queue for production.
   void runETL(task.id, game.id, {
     slug,
-    gameType,
-    imageBase64s,
+    gameName,
+    ruleFiles,
     version: newVersion,
   })
 

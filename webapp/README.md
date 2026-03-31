@@ -38,9 +38,9 @@
 |------|------|------|
 | Prisma DB 单例 | ✅ 已实现 | `lib/db.ts` |
 | 本地存储抽象（`storage/` 读写） | ✅ 已实现 | `lib/storage.ts` |
-| Dify Extractor Workflow 调用（含分批） | ✅ 已实现 | `lib/dify/workflow.ts` |
-| Dify Datasets API（建库 / 上传 / 轮询 / 导出段落） | ✅ 已实现 | `lib/dify/datasets.ts` |
-| ETL 编排器（8 步全流程） | ✅ 已实现 | `lib/dify/etl.ts` |
+| Dify Extractor Workflow 调用（`rule_files`/`game_name`） | ✅ 已实现 | `lib/dify/workflow.ts` |
+| Dify Datasets API（建库 / 上传 / 轮询 / 导出段落，可选参数后端配置） | ✅ 已实现 | `lib/dify/datasets.ts` |
+| ETL 编排器（8 步全流程 + quick_start_guide 持久化） | ✅ 已实现 | `lib/dify/etl.ts` |
 | 两步 RAG 问答（Retrieve + Chat） | ✅ 已实现 | `lib/dify/chat.ts` |
 | 聊天 API Route（SSE 端点） | ✅ 已实现 | `app/api/chat/route.ts` |
 
@@ -170,6 +170,18 @@ npm run dev          # http://localhost:3000
 | `DIFY_WORKFLOW_API_KEY` | — | Extractor Workflow 应用的 API Key |
 | `DIFY_DATASET_API_KEY` | — | Knowledge Base API Key（与应用 Key 独立，在 Dify 设置页获取） |
 | `DIFY_CHATBOT_API_KEY` | — | Q&A Chatbot 应用的 API Key（Phase 4 接入时填入） |
+| `DIFY_DATASET_PERMISSION` | `only_me` | Dataset 创建权限默认值（后端可选参数） |
+| `DIFY_DATASET_INDEXING_TECHNIQUE` | `high_quality` | 文档索引策略默认值 |
+| `DIFY_DATASET_PROCESS_MODE` | `custom` | 分段规则模式默认值 |
+| `DIFY_DATASET_SEGMENT_SEPARATOR` | `\\n#` | 分段分隔符默认值 |
+| `DIFY_DATASET_SEGMENT_MAX_TOKENS` | `1000` | 分段最大 token 默认值 |
+| `DIFY_DATASET_PREPROC_REMOVE_EXTRA_SPACES` | `true` | 预处理开关：去除多余空格 |
+| `DIFY_DATASET_PREPROC_REMOVE_URLS_EMAILS` | `false` | 预处理开关：去除 URL/邮箱 |
+| `DIFY_RETRIEVE_SEARCH_METHOD` | `hybrid_search` | 检索策略默认值 |
+| `DIFY_RETRIEVE_RERANKING_ENABLE` | `true` | 是否开启重排 |
+| `DIFY_RETRIEVE_TOP_K` | `5` | 检索 Top-K 默认值 |
+| `DIFY_RETRIEVE_SCORE_THRESHOLD_ENABLED` | `true` | 是否启用阈值过滤 |
+| `DIFY_RETRIEVE_SCORE_THRESHOLD` | `0.3` | 检索阈值默认值 |
 | `STORAGE_BASE_PATH` | `../storage` | 数据产物根目录（相对于 `webapp/`）。本地默认指向项目根的 `storage/`；上云时可改为 S3 路径 |
 | `GEMINI_API_KEY` | — | Google Gemini Key（供 `data_pipeline/` 脚本使用，webapp 本身不读取） |
 
@@ -188,3 +200,12 @@ DIFY_CHATBOT_API_KEY=app-xxxxxxxx   # Phase 4 完成后填入
 ```
 
 无需修改任何代码，重启 `npm run dev` 即可切换到真实调用。
+
+---
+
+## Extractor 输入限制策略
+
+- 后端会把 URL/ZIP/PDF 来源统一处理为 Workflow `rule_files` 输入。
+- 对 URL/ZIP 图片源执行自适应压缩并合并为 PDF 分片，目标约束为：最多 10 个文件、单文件不超过 15MB。
+- 当自动压缩后仍无法满足约束时，API 会返回可操作错误，提示按规则书章节拆分任务。
+- `quick_start_guide` 会保存到数据库并在聊天页右侧作为可折叠“保姆面板”展示，不会写入知识库。

@@ -8,12 +8,14 @@ import { type Message } from '@/components/chat/MessageBubble'
 interface ChatRoomClientProps {
   gameId: string
   gameName: string
+  quickStartGuide: string
 }
 
-export function ChatRoomClient({ gameId, gameName }: ChatRoomClientProps) {
+export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomClientProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [conversationId, setConversationId] = useState<string | undefined>()
+  const [guideOpen, setGuideOpen] = useState(true)
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -107,37 +109,62 @@ export function ChatRoomClient({ gameId, gameName }: ChatRoomClientProps) {
   )
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Chat header */}
-      <div className="shrink-0 px-5 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
-        <span className="text-2xl">🎲</span>
-        <div>
-          <h2 className="font-semibold text-gray-900 text-sm leading-tight">{gameName}</h2>
-          <p className="text-xs text-gray-400">AI 规则助手</p>
+    <div className="flex h-full bg-gray-50">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat header */}
+        <div className="shrink-0 px-5 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
+          <span className="text-2xl">🎲</span>
+          <div>
+            <h2 className="font-semibold text-gray-900 text-sm leading-tight">{gameName}</h2>
+            <p className="text-xs text-gray-400">AI 规则助手</p>
+          </div>
+          {conversationId && (
+            <button
+              onClick={() => {
+                setMessages([])
+                setConversationId(undefined)
+              }}
+              className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              title="开始新对话"
+            >
+              新对话
+            </button>
+          )}
         </div>
-        {conversationId && (
-          <button
-            onClick={() => {
-              setMessages([])
-              setConversationId(undefined)
-            }}
-            className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors"
-            title="开始新对话"
-          >
-            新对话
-          </button>
-        )}
+
+        {/* Messages */}
+        <MessageList messages={messages} />
+
+        {/* Input */}
+        <ChatInput
+          onSend={sendMessage}
+          disabled={isStreaming}
+          placeholder={isStreaming ? 'AI 正在回答...' : '输入规则问题，按 Enter 发送'}
+        />
       </div>
 
-      {/* Messages */}
-      <MessageList messages={messages} />
-
-      {/* Input */}
-      <ChatInput
-        onSend={sendMessage}
-        disabled={isStreaming}
-        placeholder={isStreaming ? 'AI 正在回答...' : '输入规则问题，按 Enter 发送'}
-      />
+      {quickStartGuide && (
+        <aside
+          className={`border-l border-gray-200 bg-white transition-all duration-200 ${
+            guideOpen ? 'w-[320px]' : 'w-12'
+          }`}
+        >
+          <button
+            onClick={() => setGuideOpen((v) => !v)}
+            className="w-full h-12 border-b border-gray-200 text-xs text-gray-600 hover:bg-gray-50"
+          >
+            {guideOpen ? '收起保姆面板' : '展开'}
+          </button>
+          {guideOpen && (
+            <div className="p-4 h-[calc(100%-48px)] overflow-y-auto">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">快速上手指南</h3>
+              <div className="text-xs text-gray-700 whitespace-pre-wrap leading-6">
+                {quickStartGuide}
+              </div>
+            </div>
+          )}
+        </aside>
+      )}
     </div>
   )
 }
