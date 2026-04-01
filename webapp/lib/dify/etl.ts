@@ -8,8 +8,7 @@
  *   4. Upload Markdown (high_quality indexing, split on \n# )
  *   5. Poll until indexing is complete
  *   6. Export segment snapshot (cost-efficient migration support)
- *   7. Update Game.datasetId in SQLite
- *   8. Update storage_manifests/games.json
+ *   7. Update Game in SQLite（datasetId、路径等；检索 /chat 只读数据库）
  *
  * This function is intended to run as a fire-and-forget background task
  * in the Next.js API route (local dev only—see caveat in tasks/route.ts).
@@ -23,7 +22,7 @@ import {
   pollDocumentIndexing,
   exportSegments,
 } from '@/lib/dify/datasets'
-import { saveMarkdown, saveQuickStartGuide, saveSegments, updateManifest } from '@/lib/storage'
+import { saveMarkdown, saveQuickStartGuide, saveSegments } from '@/lib/storage'
 
 export async function runETL(
   taskId: string,
@@ -84,9 +83,6 @@ export async function runETL(
         updatedAt: new Date(),
       },
     })
-
-    // Step 8: Update lightweight manifest index
-    updateManifest(slug, { version, datasetId })
 
     await setStatus('COMPLETED')
   } catch (err) {

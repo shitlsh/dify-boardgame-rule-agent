@@ -133,12 +133,7 @@ storage/
         └── segments_V1.json    ← 建库完成后从 Dify Datasets API 导出的段落快照
 ```
 
-`storage_manifests/` 是轻量元数据索引，**纳入 Git**（纯小 JSON，不含实际内容）：
-
-```
-storage_manifests/
-└── games.json                  ← { game_slug → { version, datasetId, outputPath } }
-```
+**元数据与 `datasetId`：** 以 **SQLite `Game` 表**为唯一事实来源（`datasetId`、`version`、本地文件路径字段等）。Webapp 检索与聊天只读数据库，**不再**单独维护 `storage_manifests/games.json`（若仓库中仍有该文件，可作历史遗留，可删除）。
 
 存储路径通过环境变量统一配置，以便未来平滑迁移：
 

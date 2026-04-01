@@ -27,7 +27,7 @@
 
 ### 本地存储目录
 - [x] `storage/raw/` 和 `storage/output/` 已创建（带 `.gitkeep`）
-- [x] `storage_manifests/games.json` 已创建
+- [x] ~~`storage_manifests/games.json`~~ 已弃用；`datasetId` 以 `Game` 表为准
 - [x] `.gitignore` 已配置：忽略 `storage/*` 内容，保留 `storage_manifests/`
 
 ### 环境变量
@@ -62,7 +62,7 @@
 
 ### 存储层封装（`webapp/lib/storage.ts`）
 - [x] 实现 `storage.ts`：全部封装已完成
-  - `saveMarkdown`, `saveSegments`, `ensureRawDir`, `updateManifest` 均已实现
+  - `saveMarkdown`, `saveSegments`, `ensureRawDir` 均已实现（不再写 `games.json`）
 
 ### Dify API 封装（`webapp/lib/dify/`）
 - [x] 实现 `workflow.ts`：已完成（Mock + Real 双模式，自动分批 ≤ 20 张）
@@ -82,7 +82,7 @@
 ### 端到端测试
 - [ ] 通过 Admin UI 添加一款已有规则书图片的游戏，验证 ETL 全流程
 - [ ] 检查 `storage/output/<game_slug>/` 中 `rules_V1.md` 和 `segments_V1.json` 是否生成
-- [ ] 检查 `storage_manifests/games.json` 是否已更新
+- [ ] ~~检查 `storage_manifests/games.json`~~（已弃用）
 - [ ] 在 Dify 控制台确认对应知识库已创建并索引完成
 
 ---
@@ -160,9 +160,9 @@
 
 ### 段落快照迁移（Layer 2）
 - [ ] 迁移时准备脚本：读取 `storage/output/<slug>/segments_V<n>.json` → 调用 Datasets API 自定义分段上传 → 仅重 Embedding（跳过 Chunking + High-quality 索引）
-- [ ] 迁移后更新 SQLite 中的 `dataset_id` 新值，并同步 `storage_manifests/games.json`
+- [ ] 迁移后更新 SQLite 中的 `dataset_id` 新值（`Game` 表）
 
 ### 规则书更新流程
 - [ ] 规则书勘误或新扩展包时：在 Admin UI 重新提交任务，版本号自增（`rules_V2.md`, `segments_V2.json`）
 - [ ] 旧版本文件保留，不覆盖，以便回滚
-- [ ] `storage_manifests/games.json` 中更新 `version` 字段，提交 Git
+- [ ] 在 `Game` 表中确认 `version` / `datasetId` 与迁移目标一致

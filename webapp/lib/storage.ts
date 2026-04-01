@@ -7,9 +7,7 @@
  * Default (local demo): ../storage  →  <project-root>/storage/
  * Future (cloud):        s3://bucket  →  swap this module's implementation
  *
- * storage_manifests/games.json (one level up from STORAGE_BASE_PATH) is a
- * lightweight Git-committed index that tracks each game's current version and
- * datasetId without storing bulky artifacts.
+ * datasetId / version 等业务字段以 Prisma `Game` 表为准；不再维护 storage_manifests/games.json。
  */
 
 import fs from 'fs'
@@ -21,8 +19,6 @@ const BASE = path.resolve(
   process.cwd(),
   process.env.STORAGE_BASE_PATH ?? '../storage',
 )
-
-const MANIFESTS_DIR = path.resolve(process.cwd(), '../storage_manifests')
 
 function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true })
@@ -46,7 +42,11 @@ export function saveQuickStartGuide(slug: string, version: number, content: stri
   return filePath
 }
 
-/** Save Dify segment snapshot to storage/output/<slug>/segments_V<n>.json */
+/**
+ * Save Dify segment export snapshot to storage/output/<slug>/segments_V<n>.json
+ * 用于跨实例迁移（Layer 2）：可用自定义分段把段落导入新 Dataset，通常只需重 Embedding。
+ * 日常问答检索只使用 Game.datasetId，不读此文件。
+ */
 export function saveSegments(slug: string, version: number, segments: unknown[]): void {
   const dir = path.join(BASE, 'output', slug)
   ensureDir(dir)
@@ -61,18 +61,3 @@ export function ensureRawDir(slug: string): string {
   return dir
 }
 
-/** Update storage_manifests/games.json with metadata for a given slug */
-export function updateManifest(slug: string, meta: Record<string, unknown>): void {
-  ensureDir(MANIFESTS_DIR)
-  const filePath = path.join(MANIFESTS_DIR, 'games.json')
-  let manifest: Record<string, unknown> = {}
-  if (fs.existsSync(filePath)) {
-    manifest = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-  }
-  manifest[slug] = {
-    ...((manifest[slug] as Record<string, unknown>) ?? {}),
-    ...meta,
-    updatedAt: new Date().toISOString(),
-  }
-  fs.writeFileSync(filePath, JSON.stringify(manifest, null, 2), 'utf-8')
-}

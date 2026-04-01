@@ -52,7 +52,8 @@ export async function createDataset(name: string): Promise<string> {
 
 /**
  * Upload a Markdown document to a dataset.
- * Uses custom segmentation: split on "\n# " (each H1 becomes one chunk).
+ * Uses custom segmentation: default split on "\n# " (each `# ` heading line starts a chunk).
+ * Configure via DIFY_DATASET_HEADING_LEVEL or quoted DIFY_DATASET_SEGMENT_SEPARATOR — see `lib/dify/config.ts`.
  * high_quality indexing mode is used by default (LLM-generated summaries per chunk).
  */
 export async function uploadDocument(

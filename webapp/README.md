@@ -174,7 +174,8 @@ npm run dev          # http://localhost:3000
 | `DIFY_DATASET_PERMISSION` | `only_me` | Dataset 创建权限默认值（后端可选参数） |
 | `DIFY_DATASET_INDEXING_TECHNIQUE` | `high_quality` | 文档索引策略默认值 |
 | `DIFY_DATASET_PROCESS_MODE` | `custom` | 分段规则模式默认值 |
-| `DIFY_DATASET_SEGMENT_SEPARATOR` | `\\n#` | 分段分隔符默认值 |
+| `DIFY_DATASET_HEADING_LEVEL` | `1` | 建库分段：按 `#` / `##` / `###` 行首切分（推荐，避免 `.env` 里 `#` 被当注释） |
+| `DIFY_DATASET_SEGMENT_SEPARATOR` | `"\n# "` | 高级：自定义分隔符；**须加双引号**，否则 `\n#` 会在 `#` 处被截断成只剩换行，导致「一行一段」 |
 | `DIFY_DATASET_SEGMENT_MAX_TOKENS` | `1000` | 分段最大 token 默认值 |
 | `DIFY_DATASET_PREPROC_REMOVE_EXTRA_SPACES` | `true` | 预处理开关：去除多余空格 |
 | `DIFY_DATASET_PREPROC_REMOVE_URLS_EMAILS` | `false` | 预处理开关：去除 URL/邮箱 |
