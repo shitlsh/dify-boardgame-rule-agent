@@ -4,7 +4,7 @@ import { load as loadHtml } from 'cheerio'
 import { WorkflowFileInput } from '@/lib/dify/workflow'
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024
-const MAX_IMAGES = 20
+const MAX_IMAGES = Number(process.env.DIFY_WORKFLOW_MAX_FILES ?? '10')
 
 type ImageAsset = {
   name: string

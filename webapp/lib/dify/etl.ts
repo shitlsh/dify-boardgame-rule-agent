@@ -63,13 +63,13 @@ export async function runETL(
     const datasetId = await createDataset(`${slug}-v${version}`)
 
     // Step 4: Upload Markdown with custom segmentation
-    const documentId = await uploadDocument(datasetId, markdown, `${slug}-rules-v${version}`)
+    const uploaded = await uploadDocument(datasetId, markdown, `${slug}-rules-v${version}`)
 
     // Step 5: Wait for indexing
-    await pollDocumentIndexing(datasetId, documentId)
+    await pollDocumentIndexing(datasetId, uploaded)
 
     // Step 6: Snapshot segments for future migration (skips costly re-indexing)
-    const segments = await exportSegments(datasetId, documentId)
+    const segments = await exportSegments(datasetId, uploaded.documentId)
     saveSegments(slug, version, segments)
 
     // Step 7: Persist datasetId to Game record

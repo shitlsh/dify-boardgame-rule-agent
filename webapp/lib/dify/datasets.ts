@@ -29,6 +29,11 @@ export interface Segment {
   word_count: number
 }
 
+export interface UploadedDocumentRef {
+  documentId: string
+  batch?: string
+}
+
 /** Create a new Dify Knowledge Base and return its dataset_id. */
 export async function createDataset(name: string): Promise<string> {
   if (MOCK) {
@@ -54,10 +59,10 @@ export async function uploadDocument(
   datasetId: string,
   markdown: string,
   docName: string,
-): Promise<string> {
+): Promise<UploadedDocumentRef> {
   if (MOCK) {
     await sleep(600)
-    return `mock-document-${Date.now()}`
+    return { documentId: `mock-document-${Date.now()}`, batch: `mock-batch-${Date.now()}` }
   }
   const res = await fetch(
     `${DIFY_BASE_URL}/datasets/${datasetId}/document/create-by-text`,
@@ -86,7 +91,15 @@ export async function uploadDocument(
   )
   if (!res.ok) throw new Error(`uploadDocument failed ${res.status}: ${await res.text()}`)
   const data = await res.json()
-  return data.document?.id as string
+  const documentId =
+    (data.document?.id as string | undefined) ??
+    (data.document_id as string | undefined) ??
+    (data.id as string | undefined)
+  const batch = data.batch as string | undefined
+  if (!documentId) {
+    throw new Error(`uploadDocument returned no document id: ${JSON.stringify(data)}`)
+  }
+  return { documentId, batch }
 }
 
 /**
@@ -95,24 +108,45 @@ export async function uploadDocument(
  */
 export async function pollDocumentIndexing(
   datasetId: string,
-  documentId: string,
+  ref: UploadedDocumentRef,
 ): Promise<void> {
   if (MOCK) {
     await sleep(1000)
     return
   }
+  const candidates = [
+    `${DIFY_BASE_URL}/datasets/${datasetId}/documents/${ref.documentId}/indexing-status`,
+    ...(ref.batch ? [`${DIFY_BASE_URL}/datasets/${datasetId}/documents/${ref.batch}/indexing-status`] : []),
+  ]
+
   for (let i = 0; i < 40; i++) {
     await sleep(3000)
-    const res = await fetch(
-      `${DIFY_BASE_URL}/datasets/${datasetId}/documents/${documentId}/indexing-status`,
-      { headers: { Authorization: `Bearer ${DATASET_API_KEY}` } },
-    )
-    if (!res.ok) throw new Error(`pollIndexing failed ${res.status}`)
-    const data = await res.json()
-    const status = (data.data?.[0]?.indexing_status as string) ?? ''
-    if (status === 'completed') return
-    if (status === 'error' || status === 'paused')
-      throw new Error(`Document indexing failed with status: ${status}`)
+    let last404 = 0
+    for (const url of candidates) {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${DATASET_API_KEY}` } })
+      if (res.status === 404) {
+        last404++
+        continue
+      }
+      if (!res.ok) throw new Error(`pollIndexing failed ${res.status}: ${await res.text()}`)
+
+      const data = await res.json()
+      const status =
+        (data.data?.[0]?.indexing_status as string | undefined) ??
+        (data.data?.indexing_status as string | undefined) ??
+        (data.indexing_status as string | undefined) ??
+        ''
+
+      if (status === 'completed') return
+      if (status === 'error' || status === 'paused') {
+        throw new Error(`Document indexing failed with status: ${status}`)
+      }
+    }
+    if (last404 === candidates.length) {
+      throw new Error(
+        `pollIndexing failed 404 (documentId=${ref.documentId}${ref.batch ? `, batch=${ref.batch}` : ''})`,
+      )
+    }
   }
   throw new Error('Document indexing timeout (120s)')
 }
