@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { MessageList } from '@/components/chat/MessageList'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { type Message } from '@/components/chat/MessageBubble'
+import { MarkdownContent } from '@/components/chat/MarkdownContent'
 
 interface ChatRoomClientProps {
   gameId: string
@@ -21,12 +22,10 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
     async (text: string) => {
       if (isStreaming) return
 
-      // Append user message
       const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text }
       setMessages((prev) => [...prev, userMsg])
       setIsStreaming(true)
 
-      // Create placeholder assistant message for streaming
       const assistantId = crypto.randomUUID()
       setMessages((prev) => [
         ...prev,
@@ -98,7 +97,6 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
           ),
         )
       } finally {
-        // Mark streaming done
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m)),
         )
@@ -109,17 +107,17 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
   )
 
   return (
-    <div className="flex h-full bg-gray-50">
+    <div className="flex min-h-[calc(100vh-5rem)] bg-gray-50">
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Chat header */}
         <div className="shrink-0 px-5 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
           <span className="text-2xl">🎲</span>
           <div>
             <h2 className="font-semibold text-gray-900 text-sm leading-tight">{gameName}</h2>
-            <p className="text-xs text-gray-400">AI 规则助手</p>
+            <p className="text-xs text-gray-400">规则问答测试 · 检索 + Chatbot</p>
           </div>
           {conversationId && (
             <button
+              type="button"
               onClick={() => {
                 setMessages([])
                 setConversationId(undefined)
@@ -132,10 +130,8 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
           )}
         </div>
 
-        {/* Messages */}
         <MessageList messages={messages} />
 
-        {/* Input */}
         <ChatInput
           onSend={sendMessage}
           disabled={isStreaming}
@@ -146,10 +142,11 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
       {quickStartGuide && (
         <aside
           className={`border-l border-gray-200 bg-white transition-all duration-200 ${
-            guideOpen ? 'w-[320px]' : 'w-12'
+            guideOpen ? 'w-[min(360px,40vw)]' : 'w-12'
           }`}
         >
           <button
+            type="button"
             onClick={() => setGuideOpen((v) => !v)}
             className="w-full h-12 border-b border-gray-200 text-xs text-gray-600 hover:bg-gray-50"
           >
@@ -157,10 +154,8 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
           </button>
           {guideOpen && (
             <div className="p-4 h-[calc(100%-48px)] overflow-y-auto">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">快速上手指南</h3>
-              <div className="text-xs text-gray-700 whitespace-pre-wrap leading-6">
-                {quickStartGuide}
-              </div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">快速上手指南</h3>
+              <MarkdownContent content={quickStartGuide} className="text-xs" />
             </div>
           )}
         </aside>

@@ -1,0 +1,108 @@
+app:
+  description: 基于知识库的规则讲解和解答的聊天机器人
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: chat
+  name: rule-chatbot
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/gemini:0.7.20@de0063a630a6d1b2c025fb84f3462ba5151fb60618309cd595c3f4711b1df847
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: false
+    max_iteration: 10
+    strategy: function_call
+    tools: []
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions:
+    - .JPG
+    - .JPEG
+    - .PNG
+    - .GIF
+    - .WEBP
+    - .SVG
+    - .MP4
+    - .MOV
+    - .MPEG
+    - .WEBM
+    allowed_file_types: []
+    allowed_file_upload_methods:
+    - remote_url
+    - local_file
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      stop: []
+      temperature: 0.4
+    mode: chat
+    name: gemini-3.1-flash-lite-preview
+    provider: langgenius/gemini/google
+  more_like_this:
+    enabled: false
+  opening_statement: ''
+  pre_prompt: "# Role\n你是一个资深、热情且极具亲和力的“桌游规则讲解员”与助手。你的任务是帮助玩家跳过繁琐的阅读，快速上手并用大白话解答游玩时的规则疑问。\n\
+    \n# Core Principles (核心原则 - 绝对服从)\n1. 绝对忠实于规则：你【必须且只能】基于下方 [规则参考] 提供的文本内容来回答问题。\n\
+    2. 零幻觉容忍：如果在 [规则参考] 中找不到确切答案，或者遇到了未覆盖的边缘情况，你必须明确告诉玩家：“抱歉，当前的规则说明书中没有明确提及这一点。”\
+    \ 绝对不允许你根据其他游戏的经验推测或捏造规则！\n\n# Output Style (表达风格)\n1. 保姆级教学：桌游新手听不懂复杂术语，请用“老玩家带新玩家”那样的亲切口吻，多用“你可以...”、“第一步先...”这种行动导向的词语。\n\
+    2. 结构化输出：\n   - 涉及多个步骤或条件，必须使用编号列表 (1, 2, 3...)。\n   - 涉及计算（如算分、算花费），请清晰列出计算过程。\n\
+    3. 引用强调：对于核心规则中的关键限制（如“最多保留 3 张”、“必须归还”），请使用加粗格式予以强调，防止玩家漏看。\n\n# Workflow (回答逻辑)\n\
+    1. 仔细阅读下方传入的 [规则参考] 文本。\n2. 倾听玩家的疑问。\n3. 如果需要结合不同段落进行逻辑推导（比如“黄金”能代替“红宝石”），请在脑海中完成推导。\n\
+    4. 用通俗的语言输出最终的解答和建议。\n\n# 复合问题特殊处理\n当玩家提出包含多个条件的复合问题（例如：“X人局的初始设置与流程”），你必须在脑海中拆解问题，确保你的回答同时涵盖：\n\
+    - 通用初始设置（初始金币、手牌数量等）。\n- 特定人数的特殊规则或变体。\n- 新手推荐配置（如果提及首次游玩）。\n切勿遗漏基础设置数据！\n\n---\n\
+    [规则参考]\n{{context}}"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config: {}
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions: []
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+  - text-input:
+      default: ''
+      label: context
+      required: true
+      variable: context
+version: 0.6.0

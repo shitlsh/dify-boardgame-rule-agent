@@ -2,15 +2,9 @@
  * Two-Step RAG Chat
  *
  * Step 1 — Retrieve: POST /v1/datasets/{datasetId}/retrieve
- *   Query the game-specific Knowledge Base for Top-K relevant rule chunks.
- *
  * Step 2 — Generate: POST /v1/chat-messages (streaming)
- *   Prepend retrieved chunks to the user message and stream the response from
- *   the Context-Injected Q&A Chatbot (no KB attached).
- *   Pass conversation_id to maintain multi-turn history on the Dify side.
- *
- * Mock mode (DIFY_MOCK_MODE=true): returns a synthetic streamed response so
- * the full chat UI can be developed without a running Dify instance.
+ *   Chatbot app (rule-chatbot) exposes a required input variable `context` (see dify_config/apps/rule-chatbot.yml).
+ *   Retrieved chunks go to inputs.context; the user question goes to query.
  */
 
 import { sleep } from '@/lib/utils'
@@ -20,6 +14,8 @@ const MOCK = process.env.DIFY_MOCK_MODE === 'true'
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL ?? 'http://localhost/v1'
 const DATASET_API_KEY = process.env.DIFY_DATASET_API_KEY ?? ''
 const CHATBOT_API_KEY = process.env.DIFY_CHATBOT_API_KEY ?? ''
+/** Must match Dify app user_input_form variable name (default: context) */
+const CHATBOT_CONTEXT_INPUT = process.env.DIFY_CHATBOT_CONTEXT_INPUT ?? 'context'
 
 export interface ChatChunk {
   type: 'text' | 'conversation_id' | 'error'
@@ -36,13 +32,11 @@ let mockAnswerIndex = 0
 
 async function* mockStream(datasetId: string): AsyncGenerator<ChatChunk> {
   await sleep(400)
-  // First yield the conversation_id
   yield { type: 'conversation_id', value: `mock-conv-${datasetId}-${Date.now()}` }
 
   const answer = MOCK_ANSWERS[mockAnswerIndex % MOCK_ANSWERS.length]
   mockAnswerIndex++
 
-  // Stream the answer character by character in chunks
   const words = answer.split('')
   let buffer = ''
   for (const char of words) {
@@ -57,7 +51,11 @@ async function* mockStream(datasetId: string): AsyncGenerator<ChatChunk> {
 }
 
 /** Step 1: Retrieve relevant rule chunks from the game's Knowledge Base */
-async function retrieveChunks(datasetId: string, query: string, topK = difyDatasetConfig.retrieval.topK): Promise<string[]> {
+export async function retrieveRules(
+  datasetId: string,
+  query: string,
+  topK = difyDatasetConfig.retrieval.topK,
+): Promise<string[]> {
   const res = await fetch(`${DIFY_BASE_URL}/datasets/${datasetId}/retrieve`, {
     method: 'POST',
     headers: {
@@ -81,27 +79,33 @@ async function retrieveChunks(datasetId: string, query: string, topK = difyDatas
   return records.map((r) => r.segment.content).filter(Boolean)
 }
 
-/** Assemble the context-injected query string sent to the Chatbot */
-function assembleQuery(chunks: string[], userMessage: string): string {
+/**
+ * Build the `context` string for the chatbot input (injected into pre_prompt {{context}}).
+ * Do not duplicate “[规则参考]” — the Dify app template already includes that label.
+ */
+export function assembleContext(chunks: string[]): string {
   if (chunks.length === 0) {
-    // Fallback: let the Chatbot acknowledge it has no reference material
-    return `[规则参考]\n（未检索到相关规则片段）\n\n[玩家问题]\n${userMessage}`
+    return '（未检索到相关规则片段。请仅根据常识说明无法从规则书中确认，不要编造具体数值或流程。）'
   }
-  const context = chunks.map((c, i) => `[片段 ${i + 1}]\n${c}`).join('\n\n')
-  return `[规则参考]\n${context}\n\n[玩家问题]\n${userMessage}`
+  return chunks.map((c, i) => `[片段 ${i + 1}]\n${c}`).join('\n\n')
 }
 
 /**
- * Step 2: Stream the chatbot response.
- * Yields ChatChunk items: first the conversation_id, then text delta chunks.
+ * Step 2: Stream chatbot response.
+ * Passes retrieved text as `inputs[context]` and the user turn as `query`.
  */
-async function* streamChatbot(
-  assembledQuery: string,
+async function* sendChatMessage(
+  context: string,
+  userMessage: string,
   conversationId?: string,
 ): AsyncGenerator<ChatChunk> {
+  const inputs: Record<string, string> = {
+    [CHATBOT_CONTEXT_INPUT]: context,
+  }
+
   const body: Record<string, unknown> = {
-    inputs: {},
-    query: assembledQuery,
+    inputs,
+    query: userMessage,
     response_mode: 'streaming',
     user: 'end-user',
   }
@@ -130,7 +134,7 @@ async function* streamChatbot(
 
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
-    buffer = lines.pop() ?? '' // keep last (possibly incomplete) line
+    buffer = lines.pop() ?? ''
 
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue
@@ -144,7 +148,6 @@ async function* streamChatbot(
         continue
       }
 
-      // Emit conversation_id once (present on first message event)
       if (!conversationIdEmitted && event.conversation_id) {
         yield { type: 'conversation_id', value: event.conversation_id as string }
         conversationIdEmitted = true
@@ -158,8 +161,7 @@ async function* streamChatbot(
 }
 
 /**
- * Main entry point: perform two-step RAG and return an async generator of chunks.
- * Callers stream chunks to the client via SSE.
+ * Two-step RAG: retrieve → inputs.context + query.
  */
 export async function* twoStepRAG(params: {
   datasetId: string
@@ -174,9 +176,9 @@ export async function* twoStepRAG(params: {
   }
 
   try {
-    const chunks = await retrieveChunks(datasetId, userMessage)
-    const assembled = assembleQuery(chunks, userMessage)
-    yield* streamChatbot(assembled, conversationId)
+    const chunks = await retrieveRules(datasetId, userMessage)
+    const context = assembleContext(chunks)
+    yield* sendChatMessage(context, userMessage, conversationId)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     yield { type: 'error', value: msg }

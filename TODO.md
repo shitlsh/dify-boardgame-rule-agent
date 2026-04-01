@@ -101,15 +101,15 @@
 - [ ] 将 Chatbot 配置导出保存至 `dify_config/apps/boardgame-qa.yml`
 
 ### 两步 RAG 后端实现
-- [ ] 实现 `webapp/lib/dify/chat.ts`：
-  - `retrieveRules(datasetId: string, query: string, topK?: number): Promise<string[]>` — 调用 `POST /v1/datasets/{datasetId}/retrieve`
-  - `assembleQuery(chunks: string[], userMessage: string): string` — 拼装注入格式
-  - `sendChatMessage(assembledQuery: string, conversationId?: string): AsyncIterable<string>` — 调用 `POST /v1/chat-messages`（stream 模式），返回 SSE 流
-- [ ] 实现 `webapp/app/api/chat/route.ts`（SSE 端点）：
+- [x] 实现 `webapp/lib/dify/chat.ts`：
+  - `retrieveRules` — `POST /v1/datasets/{datasetId}/retrieve`
+  - `assembleContext` — 拼装检索片段为 Chatbot 的 `inputs.context`（与 `rule-chatbot` 的 `{{context}}` 对齐）
+  - `sendChatMessage`（内部）— `POST /v1/chat-messages` streaming，`inputs[context]` + `query` 为用户问题
+- [x] 实现 `webapp/app/api/chat/route.ts`（SSE 端点）：
   - 接收 `{ gameId, message, conversationId? }`
   - 从 DB 查出 `datasetId`
   - 执行两步 RAG
-  - 将 Dify SSE 流透传给前端，首个 chunk 响应头中携带 `conversation_id`
+  - 将自定义 JSON chunk 透传（含 `conversation_id`）
 
 ### 单元测试（可选但推荐）
 - [ ] 用 `curl` 或 Postman 直接测试 `/api/chat` 端点，验证流式响应和多轮 `conversation_id` 连续性
@@ -118,25 +118,21 @@
 
 ## Phase 5：C 端问答交互 (User-Facing Chat UI)
 
+> 当前以**管理员验证**为主：聊天入口与后台共用侧边栏，路由 `/chat`、`/chat/[gameId]`（旧 `/games/[gameId]` 重定向）。
+
 ### 游戏大厅
-- [ ] 实现 `webapp/app/(chat)/page.tsx`：调用 `/api/games` 渲染游戏卡片（封面、名称、玩家人数）
-- [ ] 点击卡片跳转至 `/games/[gameId]` 聊天室
+- [x] 实现 `webapp/app/(admin)/chat/page.tsx`：Prisma 读游戏列表，已建库可点进聊天
+- [x] 点击卡片跳转至 `/chat/[gameId]` 聊天室
 
 ### 聊天室
-- [ ] 实现 `webapp/app/(chat)/games/[gameId]/page.tsx`：
-  - 消息列表（区分用户消息 / AI 回答）
-  - 流式打字机效果（基于 SSE，读取 `ReadableStream`）
-  - 输入框 + 发送按钮（支持 Enter 发送）
-  - `conversationId` 存入 React state（`useState`），首次为空，首次响应后赋值，后续消息携带
-- [ ] 实现 `webapp/components/chat/` 中的子组件：
-  - `MessageList.tsx`
-  - `MessageBubble.tsx`（区分 user / assistant 样式）
-  - `ChatInput.tsx`
+- [x] 实现 `webapp/app/(admin)/chat/[gameId]/page.tsx` + `components/chat/ChatRoomClient.tsx`
+  - 消息列表、SSE 流式、`conversationId` state、新对话
+- [x] `webapp/components/chat/`：`MessageList`、`MessageBubble`（助手消息 Markdown）、`ChatInput`、`MarkdownContent`（保姆面板）
 
 ### 体验优化
-- [ ] 加载状态：AI 思考中显示 Skeleton 或 "..." 动画
-- [ ] 错误处理：网络失败 / Dify 报错时展示友好提示，不崩溃
-- [ ] 游戏大厅：未完成建库（Task 非 Completed）的游戏卡片置灰，不可进入聊天
+- [ ] 加载状态：Skeleton（可选）
+- [x] 错误处理：SSE error chunk / 网络错误提示
+- [x] 测试大厅：未建库游戏置灰不可点
 
 ### 最终验收
 - [ ] 完整走通一次用户旅程：Admin 添加游戏 → ETL 完成 → C 端进入聊天室 → 多轮问答正常

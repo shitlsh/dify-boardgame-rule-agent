@@ -25,6 +25,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             ＋ 添加游戏
           </Link>
+          <Link
+            href="/chat"
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            💬 规则问答测试
+          </Link>
         </nav>
 
         {/* Mock mode indicator */}

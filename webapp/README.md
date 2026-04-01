@@ -22,15 +22,14 @@
 | 游戏封面上传 / 编辑 | ⬜ 待实现 | — |
 | ETL 进度实时推送（WebSocket / SSE） | ⬜ 待实现（当前为 2.5s 轮询） | — |
 
-### C 端问答界面 (Chat)
+### 规则问答测试（管理员，与后台同侧边栏）
 
 | 功能 | 状态 | 路由 |
 |------|------|------|
-| 游戏大厅（卡片列表，仅展示已完成建库的游戏） | ✅ 已实现 | `/` |
-| 游戏专属聊天室（多轮问答） | ✅ 已实现 | `/games/[gameId]` |
-| 流式打字机效果（SSE 透传） | ✅ 已实现 | — |
-| `conversation_id` 会话管理（前端 state） | ✅ 已实现 | — |
-| 新对话重置按钮 | ✅ 已实现 | — |
+| 测试大厅（仅展示已建库游戏） | ✅ 已实现 | `/chat` |
+| 聊天室（检索 + Chatbot `context` 输入，SSE） | ✅ 已实现 | `/chat/[gameId]` |
+| 旧链接兼容 | ✅ 已实现 | `/games/[gameId]` → 重定向至 `/chat/[gameId]` |
+| 根路径 | ✅ 已实现 | `/` → 重定向至 `/dashboard` |
 
 ### 核心库 / 服务层
 
@@ -51,17 +50,18 @@
 ```
 webapp/
 ├── app/
-│   ├── (admin)/              # 路由组：管理后台
+│   ├── (admin)/              # 路由组：管理后台（含规则问答测试）
 │   │   ├── layout.tsx        # 侧边栏导航 + Mock 模式指示灯
-│   │   ├── dashboard/        # 游戏库总览（Server Component + 客户端自动刷新）
-│   │   └── games/new/        # 添加游戏表单（Client Component）
-│   ├── (chat)/               # 路由组：C 端问答（Phase 5 实现）
+│   │   ├── dashboard/        # 游戏库总览
+│   │   ├── games/new/        # 添加游戏表单
+│   │   └── chat/             # 规则问答测试大厅 + 聊天室
 │   ├── api/
 │   │   ├── games/            # 游戏元数据 CRUD
 │   │   ├── tasks/            # ETL 任务：触发 + 状态查询
 │   │   └── chat/             # 两步 RAG SSE 端点（Phase 4 实现）
 │   ├── layout.tsx            # 根布局
-│   └── page.tsx              # 根路由 → 重定向至 /dashboard
+│   ├── page.tsx              # 根路由 → 重定向至 /dashboard
+│   └── games/[gameId]/       # 旧聊天链接 → 重定向至 /chat/[gameId]
 ├── components/
 │   ├── ui/                   # Shadcn UI 基础组件（待引入）
 │   ├── admin/                # 管理后台专用组件
@@ -169,7 +169,8 @@ npm run dev          # http://localhost:3000
 | `DIFY_BASE_URL` | `http://localhost/v1` | Dify 实例地址（`DIFY_MOCK_MODE=false` 时生效） |
 | `DIFY_WORKFLOW_API_KEY` | — | Extractor Workflow 应用的 API Key |
 | `DIFY_DATASET_API_KEY` | — | Knowledge Base API Key（与应用 Key 独立，在 Dify 设置页获取） |
-| `DIFY_CHATBOT_API_KEY` | — | Q&A Chatbot 应用的 API Key（Phase 4 接入时填入） |
+| `DIFY_CHATBOT_API_KEY` | — | Q&A Chatbot 应用的 API Key（如 `rule-chatbot`） |
+| `DIFY_CHATBOT_CONTEXT_INPUT` | `context` | 与 Dify 应用「用户输入」变量名一致，用于传入检索片段 |
 | `DIFY_DATASET_PERMISSION` | `only_me` | Dataset 创建权限默认值（后端可选参数） |
 | `DIFY_DATASET_INDEXING_TECHNIQUE` | `high_quality` | 文档索引策略默认值 |
 | `DIFY_DATASET_PROCESS_MODE` | `custom` | 分段规则模式默认值 |
