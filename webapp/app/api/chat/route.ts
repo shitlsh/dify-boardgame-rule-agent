@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
   if (!game.datasetId) {
     return new Response(
-      JSON.stringify({ error: '该游戏的知识库尚未建立，请先完成 ETL 流程' }),
+      JSON.stringify({ error: '该游戏的规则尚在整理中，请稍后再试' }),
       { status: 409 },
     )
   }

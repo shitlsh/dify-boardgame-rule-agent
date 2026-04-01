@@ -23,13 +23,13 @@ export default async function AdminChatRoomPage({ params }: Props) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 text-gray-500">
         <span className="text-5xl">⏳</span>
-        <p className="font-medium">知识库尚未建立完成</p>
-        <p className="text-sm text-gray-400">请等待 ETL 完成后再测试问答</p>
+        <p className="font-medium">规则尚在整理中</p>
+        <p className="text-sm text-gray-400">完成后即可在此提问，请稍候或返回查看进度</p>
         <Link
           href="/chat"
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+          className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white transition-colors hover:bg-indigo-700"
         >
-          返回测试大厅
+          返回规则助手
         </Link>
       </div>
     )

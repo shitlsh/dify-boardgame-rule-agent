@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
 
   const gameName = (formData.get('gameName') as string | null)?.trim()
   const gameType = (formData.get('gameType') as string | null) ?? 'general'
+  const coverUrlRaw = (formData.get('coverUrl') as string | null)?.trim() ?? ''
+  const playerCountRaw = (formData.get('playerCount') as string | null)?.trim() ?? ''
   const sourceType = (formData.get('sourceType') as string | null) ?? 'url'
   const sourceUrl = (formData.get('sourceUrl') as string | null)?.trim() ?? null
   const sourceFiles = formData
@@ -35,6 +37,21 @@ export async function POST(req: NextRequest) {
   if (!gameName) {
     return NextResponse.json({ error: '游戏名称不能为空' }, { status: 400 })
   }
+
+  let coverUrl: string | null = null
+  if (coverUrlRaw) {
+    try {
+      const u = new URL(coverUrlRaw)
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        return NextResponse.json({ error: '封面地址需为 http 或 https 链接' }, { status: 400 })
+      }
+      coverUrl = u.toString()
+    } catch {
+      return NextResponse.json({ error: '封面地址格式无效' }, { status: 400 })
+    }
+  }
+
+  const playerCount = playerCountRaw || null
 
   let ruleFiles
   try {
@@ -52,8 +69,23 @@ export async function POST(req: NextRequest) {
 
   const game = await prisma.game.upsert({
     where: { slug },
-    update: { name: gameName, gameType, version: newVersion, updatedAt: new Date() },
-    create: { name: gameName, slug, gameType, version: newVersion },
+    update: {
+      name: gameName,
+      gameType,
+      version: newVersion,
+      updatedAt: new Date(),
+      // 再次入库时若留空，保留原有封面与人数
+      ...(coverUrlRaw !== '' && { coverUrl }),
+      ...(playerCountRaw !== '' && { playerCount }),
+    },
+    create: {
+      name: gameName,
+      slug,
+      gameType,
+      coverUrl,
+      playerCount,
+      version: newVersion,
+    },
   })
 
   const task = await prisma.task.create({

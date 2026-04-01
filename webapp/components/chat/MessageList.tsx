@@ -18,17 +18,15 @@ export function MessageList({ messages, minimalEmpty }: MessageListProps) {
   if (messages.length === 0) {
     if (minimalEmpty) {
       return (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-4 py-6 text-center text-sm text-gray-400 select-none">
-          <p>在下方输入问题，或点选推荐问题</p>
-          <p className="text-xs text-gray-400/90">回答仅依据规则书原文</p>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-8 text-center text-sm text-slate-400 select-none">
+          <p>在下方输入问题，或点选推荐问题开始</p>
         </div>
       )
     }
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-gray-400 select-none">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-slate-400 select-none">
         <span className="text-5xl">🎲</span>
-        <p className="text-base font-medium">有什么规则问题，尽管问我！</p>
-        <p className="text-sm">我只根据规则书原文作答，不猜测</p>
+        <p className="text-base font-medium text-slate-500">有什么想了解的，直接问我就好</p>
       </div>
     )
   }

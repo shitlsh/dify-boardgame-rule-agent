@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: '桌游规则助手',
-  description: '基于 AI 的桌游规则问答系统',
+  description: '查询桌游规则说明与上手提示',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

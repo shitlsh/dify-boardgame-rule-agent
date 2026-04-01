@@ -61,9 +61,7 @@ export function ChatInput({ onSend, disabled, placeholder = '输入问题，按 
           </svg>
         </button>
       </div>
-      <p className="mt-1.5 text-xs text-gray-400 text-center">
-        仅根据规则原文作答 · Shift+Enter 换行
-      </p>
+      <p className="mt-1.5 text-center text-xs text-slate-400">Shift+Enter 换行</p>
     </div>
   )
 }

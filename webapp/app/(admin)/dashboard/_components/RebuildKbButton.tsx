@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { tableActionButtonClass } from './action-styles'
 
 type Props = {
   gameId: string
@@ -32,17 +33,17 @@ export function RebuildKbButton({ gameId, canRebuild }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="flex w-full flex-col gap-1">
       <button
         type="button"
         disabled={!canRebuild || loading}
         onClick={onClick}
         title={
           canRebuild
-            ? '仅重建知识库（不跑 Extractor），会删除旧 Dataset 后重新索引'
-            : '本地无规则 Markdown 文件'
+            ? '使用已保存的规则文件重新生成可检索内容（不重新识别图片）'
+            : '本地尚无已保存的规则文件'
         }
-        className="px-2.5 py-1 text-xs font-medium rounded-md border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className={tableActionButtonClass}
       >
         {loading ? '…' : '重建知识库'}
       </button>

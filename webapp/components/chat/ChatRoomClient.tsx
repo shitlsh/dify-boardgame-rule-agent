@@ -120,7 +120,7 @@ export function ChatRoomClient({
         <span className="text-2xl">🎲</span>
         <div>
           <h2 className="text-sm font-semibold leading-tight text-gray-900">{gameName}</h2>
-          <p className="text-xs text-gray-400">规则问答测试 · 检索 + Chatbot</p>
+          <p className="text-xs text-gray-400">规则助手</p>
         </div>
         {conversationId && (
           <button
