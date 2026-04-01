@@ -24,6 +24,35 @@ function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true })
 }
 
+/**
+ * Read existing rules markdown for KB-only rebuild.
+ * Uses `rulesMarkdownPath` when set and file exists; otherwise `storage/output/<slug>/rules_V<n>.md`.
+ */
+export function readRulesMarkdown(
+  slug: string,
+  version: number,
+  rulesMarkdownPath?: string | null,
+): string | null {
+  const candidates: string[] = []
+  if (rulesMarkdownPath) {
+    const p = path.isAbsolute(rulesMarkdownPath)
+      ? rulesMarkdownPath
+      : path.resolve(process.cwd(), rulesMarkdownPath)
+    candidates.push(p)
+  }
+  candidates.push(path.join(BASE, 'output', slug, `rules_V${version}.md`))
+  const seen = new Set<string>()
+  for (const p of candidates) {
+    const abs = path.normalize(p)
+    if (seen.has(abs)) continue
+    seen.add(abs)
+    if (fs.existsSync(abs)) {
+      return fs.readFileSync(abs, 'utf-8')
+    }
+  }
+  return null
+}
+
 /** Save extracted Markdown to storage/output/<slug>/rules_V<n>.md */
 export function saveMarkdown(slug: string, version: number, content: string): string {
   const dir = path.join(BASE, 'output', slug)

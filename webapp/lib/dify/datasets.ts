@@ -34,6 +34,20 @@ export interface UploadedDocumentRef {
   batch?: string
 }
 
+/** Delete a dataset by id (used before KB rebuild to drop old index). */
+export async function deleteDataset(datasetId: string): Promise<void> {
+  if (MOCK) {
+    await sleep(200)
+    return
+  }
+  const res = await fetch(`${DIFY_BASE_URL}/datasets/${datasetId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${DATASET_API_KEY}` },
+  })
+  if (res.status === 404) return
+  if (!res.ok) throw new Error(`deleteDataset failed ${res.status}: ${await res.text()}`)
+}
+
 /** Create a new Dify Knowledge Base and return its dataset_id. */
 export async function createDataset(name: string): Promise<string> {
   if (MOCK) {

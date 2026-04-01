@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
+import { readRulesMarkdown } from '@/lib/storage'
+import { RebuildKbButton } from './_components/RebuildKbButton'
 import { TaskRefresher } from './_components/TaskRefresher'
 
 export const dynamic = 'force-dynamic'
@@ -63,12 +65,15 @@ export default async function DashboardPage() {
                 <th className="px-5 py-3 text-left font-medium text-gray-500">ETL 状态</th>
                 <th className="px-5 py-3 text-left font-medium text-gray-500">版本</th>
                 <th className="px-5 py-3 text-left font-medium text-gray-500">添加时间</th>
+                <th className="px-5 py-3 text-left font-medium text-gray-500">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {games.map((game) => {
                 const task = game.tasks[0]
                 const status = task?.status ?? null
+                const canRebuild =
+                  !!readRulesMarkdown(game.slug, game.version, game.rulesMarkdownPath)?.trim()
                 return (
                   <tr key={game.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3 font-medium text-gray-900">{game.name}</td>
@@ -95,6 +100,9 @@ export default async function DashboardPage() {
                     <td className="px-5 py-3 text-gray-500">V{game.version}</td>
                     <td className="px-5 py-3 text-gray-400">
                       {new Date(game.createdAt).toLocaleDateString('zh-CN')}
+                    </td>
+                    <td className="px-5 py-3 align-top">
+                      <RebuildKbButton gameId={game.id} canRebuild={canRebuild} />
                     </td>
                   </tr>
                 )

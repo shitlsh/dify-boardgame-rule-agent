@@ -15,6 +15,7 @@
 | 游戏库总览（列表 + 任务状态 + 自动刷新） | ✅ 已实现 | `/dashboard` |
 | 添加游戏表单（URL / 多图 / PDF 三种来源） | ✅ 已实现 | `/games/new` |
 | ETL 任务触发与状态轮询 API | ✅ 已实现 | `POST /api/tasks` |
+| 仅重建知识库（本地已有 `rules_V*.md` 时不跑 Extractor；删旧 Dataset 后重建索引） | ✅ 已实现 | `POST /api/games/[gameId]/rebuild-kb` |
 | 单任务状态查询 API | ✅ 已实现 | `GET /api/tasks/[taskId]` |
 | 游戏列表查询 API | ✅ 已实现 | `GET /api/games` |
 | URL 来源实际爬取（调用集石爬虫） | ⬜ 待实现 | — |
@@ -74,6 +75,7 @@ webapp/
 │       ├── workflow.ts       # Extractor Workflow（Mock / Real 双模式，自动分批）
 │       ├── datasets.ts       # Datasets API（Mock / Real 双模式）
 │       ├── etl.ts            # ETL 编排（fire-and-forget，本地 dev 适用）
+│       ├── rebuild-kb.ts     # 仅知识库重建（跳过 Extractor）
 │       └── chat.ts           # 两步 RAG（Phase 4 实现）
 └── prisma/
     ├── schema.prisma         # Game / Task 数据模型
