@@ -22,7 +22,12 @@ import {
   pollDocumentIndexing,
   exportSegments,
 } from '@/lib/dify/datasets'
-import { saveMarkdown, saveQuickStartGuide, saveSegments } from '@/lib/storage'
+import {
+  saveMarkdown,
+  saveQuickStartGuide,
+  saveStartQuestions,
+  saveSegments,
+} from '@/lib/storage'
 
 export async function runETL(
   taskId: string,
@@ -53,9 +58,14 @@ export async function runETL(
     // Step 2: Backup Markdown to local storage
     const rulesMarkdownPath = saveMarkdown(slug, version, markdown)
     const quickStartGuide = extractorOutput.quickStartGuide?.trim() ?? ''
+    const startQuestions = extractorOutput.startQuestions ?? []
     let quickStartGuidePath: string | null = null
+    let startQuestionsPath: string | null = null
     if (quickStartGuide) {
       quickStartGuidePath = saveQuickStartGuide(slug, version, quickStartGuide)
+    }
+    if (startQuestions.length > 0) {
+      startQuestionsPath = saveStartQuestions(slug, version, startQuestions)
     }
 
     // Step 3: Create Dify Knowledge Base
@@ -78,8 +88,10 @@ export async function runETL(
         datasetId,
         version,
         quickStartGuide: quickStartGuide || null,
+        startQuestions: startQuestions.length > 0 ? startQuestions : [],
         rulesMarkdownPath,
         quickStartGuidePath,
+        startQuestionsPath,
         updatedAt: new Date(),
       },
     })

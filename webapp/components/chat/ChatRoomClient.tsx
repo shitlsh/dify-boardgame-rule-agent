@@ -3,20 +3,26 @@
 import { useState, useCallback } from 'react'
 import { MessageList } from '@/components/chat/MessageList'
 import { ChatInput } from '@/components/chat/ChatInput'
+import { QuickStartHero } from '@/components/chat/QuickStartHero'
+import { SuggestedPrompts } from '@/components/chat/SuggestedPrompts'
 import { type Message } from '@/components/chat/MessageBubble'
-import { MarkdownContent } from '@/components/chat/MarkdownContent'
 
 interface ChatRoomClientProps {
   gameId: string
   gameName: string
   quickStartGuide: string
+  startQuestions: string[]
 }
 
-export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomClientProps) {
+export function ChatRoomClient({
+  gameId,
+  gameName,
+  quickStartGuide,
+  startQuestions,
+}: ChatRoomClientProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [conversationId, setConversationId] = useState<string | undefined>()
-  const [guideOpen, setGuideOpen] = useState(true)
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -106,60 +112,46 @@ export function ChatRoomClient({ gameId, gameName, quickStartGuide }: ChatRoomCl
     [gameId, conversationId, isStreaming],
   )
 
+  const showSuggested = messages.length === 0 && startQuestions.length > 0
+
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] bg-gray-50">
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="shrink-0 px-5 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
-          <span className="text-2xl">🎲</span>
-          <div>
-            <h2 className="font-semibold text-gray-900 text-sm leading-tight">{gameName}</h2>
-            <p className="text-xs text-gray-400">规则问答测试 · 检索 + Chatbot</p>
-          </div>
-          {conversationId && (
-            <button
-              type="button"
-              onClick={() => {
-                setMessages([])
-                setConversationId(undefined)
-              }}
-              className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors"
-              title="开始新对话"
-            >
-              新对话
-            </button>
-          )}
+    <div className="flex min-h-[calc(100vh-5rem)] flex-col bg-gray-50">
+      <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
+        <span className="text-2xl">🎲</span>
+        <div>
+          <h2 className="text-sm font-semibold leading-tight text-gray-900">{gameName}</h2>
+          <p className="text-xs text-gray-400">规则问答测试 · 检索 + Chatbot</p>
         </div>
-
-        <MessageList messages={messages} />
-
-        <ChatInput
-          onSend={sendMessage}
-          disabled={isStreaming}
-          placeholder={isStreaming ? 'AI 正在回答...' : '输入规则问题，按 Enter 发送'}
-        />
-      </div>
-
-      {quickStartGuide && (
-        <aside
-          className={`border-l border-gray-200 bg-white transition-all duration-200 ${
-            guideOpen ? 'w-[min(360px,40vw)]' : 'w-12'
-          }`}
-        >
+        {conversationId && (
           <button
             type="button"
-            onClick={() => setGuideOpen((v) => !v)}
-            className="w-full h-12 border-b border-gray-200 text-xs text-gray-600 hover:bg-gray-50"
+            onClick={() => {
+              setMessages([])
+              setConversationId(undefined)
+            }}
+            className="ml-auto text-xs text-gray-400 transition-colors hover:text-gray-600"
+            title="开始新对话"
           >
-            {guideOpen ? '收起保姆面板' : '展开'}
+            新对话
           </button>
-          {guideOpen && (
-            <div className="p-4 h-[calc(100%-48px)] overflow-y-auto">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">快速上手指南</h3>
-              <MarkdownContent content={quickStartGuide} className="text-xs" />
-            </div>
-          )}
-        </aside>
-      )}
+        )}
+      </div>
+
+      {quickStartGuide ? <QuickStartHero markdown={quickStartGuide} /> : null}
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <MessageList messages={messages} minimalEmpty={Boolean(quickStartGuide)} />
+      </div>
+
+      {showSuggested ? (
+        <SuggestedPrompts prompts={startQuestions} onPick={sendMessage} disabled={isStreaming} />
+      ) : null}
+
+      <ChatInput
+        onSend={sendMessage}
+        disabled={isStreaming}
+        placeholder={isStreaming ? 'AI 正在回答...' : '输入规则问题，按 Enter 发送'}
+      />
     </div>
   )
 }

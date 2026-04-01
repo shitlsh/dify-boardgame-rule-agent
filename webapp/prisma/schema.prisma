@@ -17,9 +17,11 @@ model Game {
   playerCount String?
   gameType    String   @default("general")
   datasetId   String?          // Dify Knowledge Base ID set after ETL completes
-  quickStartGuide String?      // Workflow output for UI helper sidebar
+  quickStartGuide String?      // Workflow output: quick start guide (chat Hero)
+  startQuestions Json?         // Workflow output: suggested questions JSON string[]
   rulesMarkdownPath String?    // local backup path: storage/output/<slug>/rules_V<n>.md
   quickStartGuidePath String?  // local backup path: storage/output/<slug>/quick_start_V<n>.md
+  startQuestionsPath String?   // local backup: storage/output/<slug>/start_questions_V<n>.json
   version     Int      @default(1) // increments on re-ingestion
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

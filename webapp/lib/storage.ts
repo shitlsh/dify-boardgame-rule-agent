@@ -71,6 +71,15 @@ export function saveQuickStartGuide(slug: string, version: number, content: stri
   return filePath
 }
 
+/** Save suggested questions JSON to storage/output/<slug>/start_questions_V<n>.json */
+export function saveStartQuestions(slug: string, version: number, questions: string[]): string {
+  const dir = path.join(BASE, 'output', slug)
+  ensureDir(dir)
+  const filePath = path.join(dir, `start_questions_V${version}.json`)
+  fs.writeFileSync(filePath, JSON.stringify(questions, null, 2), 'utf-8')
+  return filePath
+}
+
 /**
  * Save Dify segment export snapshot to storage/output/<slug>/segments_V<n>.json
  * 用于跨实例迁移（Layer 2）：可用自定义分段把段落导入新 Dataset，通常只需重 Embedding。

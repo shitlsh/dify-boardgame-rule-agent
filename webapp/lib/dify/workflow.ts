@@ -8,6 +8,7 @@
  * Workflow outputs:
  *   - full_markdown
  *   - quick_start_guide
+ *   - start_questions (JSON array string)
  */
 
 import { sleep } from '@/lib/utils'
@@ -25,6 +26,27 @@ export interface WorkflowFileInput {
 export interface ExtractorWorkflowResult {
   fullMarkdown: string
   quickStartGuide: string
+  startQuestions: string[]
+}
+
+/** Parse Dify `start_questions` output (JSON string, sometimes fenced). */
+export function parseStartQuestions(raw: unknown): string[] {
+  if (raw == null) return []
+  let s = typeof raw === 'string' ? raw.trim() : ''
+  if (!s) return []
+  if (s.startsWith('```')) {
+    s = s.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+  }
+  try {
+    const parsed = JSON.parse(s) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((x): x is string => typeof x === 'string')
+      .map((x) => x.trim())
+      .filter(Boolean)
+  } catch {
+    return []
+  }
 }
 
 function buildMockMarkdown(gameName: string): string {
@@ -94,6 +116,13 @@ function buildMockQuickStart(gameName: string): string {
 > 以上为 ${gameName} 的 Mock 快速开始。`
 }
 
+const MOCK_START_QUESTIONS = [
+  '🎯 怎么赢？分数怎么算？',
+  '👋 第一回合我最该做什么？',
+  '⚙️ 这个游戏最核心的机制是什么？',
+  '⚠️ 新手最容易踩的坑有哪些？',
+]
+
 async function uploadWorkflowFile(file: WorkflowFileInput): Promise<Record<string, string>> {
   const form = new FormData()
   const fileView = new Uint8Array(file.bytes)
@@ -133,6 +162,7 @@ export async function runExtractorWorkflow(
     return {
       fullMarkdown: buildMockMarkdown(gameName),
       quickStartGuide: buildMockQuickStart(gameName),
+      startQuestions: [...MOCK_START_QUESTIONS],
     }
   }
 
@@ -162,9 +192,10 @@ export async function runExtractorWorkflow(
 
   const fullMarkdown = (data.data?.outputs?.full_markdown as string) ?? ''
   const quickStartGuide = (data.data?.outputs?.quick_start_guide as string) ?? ''
+  const startQuestions = parseStartQuestions(data.data?.outputs?.start_questions)
   if (!fullMarkdown) {
     throw new Error(`Workflow succeeded but full_markdown is empty: ${JSON.stringify(data)}`)
   }
 
-  return { fullMarkdown, quickStartGuide }
+  return { fullMarkdown, quickStartGuide, startQuestions }
 }

@@ -2,6 +2,12 @@ import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChatRoomClient } from '@/components/chat/ChatRoomClient'
+import type { Prisma } from '@prisma/client'
+
+function startQuestionsFromJson(value: Prisma.JsonValue | null | undefined): string[] {
+  if (value == null || !Array.isArray(value)) return []
+  return value.filter((x): x is string => typeof x === 'string')
+}
 
 interface Props {
   params: Promise<{ gameId: string }>
@@ -34,6 +40,7 @@ export default async function AdminChatRoomPage({ params }: Props) {
       gameId={game.id}
       gameName={game.name}
       quickStartGuide={game.quickStartGuide ?? ''}
+      startQuestions={startQuestionsFromJson(game.startQuestions)}
     />
   )
 }

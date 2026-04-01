@@ -69,30 +69,6 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: start
-        targetType: knowledge-retrieval
-      id: 1774936549322-source-1774937224597-target
-      source: '1774936549322'
-      sourceHandle: source
-      target: '1774937224597'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: knowledge-retrieval
-        targetType: llm
-      id: 1774937224597-source-1774937249213-target
-      source: '1774937224597'
-      sourceHandle: source
-      target: '1774937249213'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
         sourceType: llm
         targetType: llm
       id: 1774937249213--1774937690606-target
@@ -109,6 +85,53 @@ workflow:
         targetType: end
       id: 1774937690606-source-1774937816197-target
       source: '1774937690606'
+      sourceHandle: source
+      target: '1774937816197'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: knowledge-retrieval
+      id: 1774936549322-source-1775019858894-target
+      source: '1774936549322'
+      sourceHandle: source
+      target: '1775019858894'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1775019858894-source-1774937249213-target
+      source: '1775019858894'
+      sourceHandle: source
+      target: '1774937249213'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 1774937249213-source-1775022724105-target
+      source: '1774937249213'
+      sourceHandle: source
+      target: '1775022724105'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1775022724105-source-1774937816197-target
+      source: '1775022724105'
       sourceHandle: source
       target: '1774937816197'
       targetHandle: target
@@ -142,40 +165,23 @@ workflow:
           required: true
           type: text-input
           variable: game_name
-      height: 135
+        - default: 术语快查,玩家社群用语
+          hide: true
+          hint: ''
+          label: default_knowledge
+          options: []
+          placeholder: ''
+          required: false
+          type: text-input
+          variable: default_knowledge
+      height: 161
       id: '1774936549322'
       position:
-        x: 80
-        y: 282
+        x: 0
+        y: 0
       positionAbsolute:
-        x: 80
-        y: 282
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-    - data:
-        dataset_ids:
-        - Zm47YUA00qS4N/ToTQ/vYGMOjkFhlJkcVhYEPIEQymVsRL/7SGZQs1hp/DyMOv6A
-        multiple_retrieval_config:
-          reranking_enable: false
-          reranking_mode: reranking_model
-          top_k: 4
-        query_attachment_selector: []
-        query_variable_selector: []
-        retrieval_mode: multiple
-        selected: false
-        title: 知识检索
-        type: knowledge-retrieval
-      height: 90
-      id: '1774937224597'
-      position:
-        x: 382
-        y: 282
-      positionAbsolute:
-        x: 382
-        y: 282
+        x: 0
+        y: 0
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -185,7 +191,7 @@ workflow:
         context:
           enabled: true
           variable_selector:
-          - '1774937224597'
+          - '1775019858894'
           - result
         model:
           completion_params:
@@ -211,7 +217,7 @@ workflow:
             \ 配件清单\n## 1.2 公共区域设置\n## 1.3 玩家个人设置\n\n# 2. 游戏流程与回合结构\n## 2.1 阶段一：[阶段名称]\n\
             ## 2.2 阶段二：[阶段名称]\n### 2.2.1 可选行动 A\n### 2.2.2 可选行动 B\n\n# 3. 终局触发与计分规则\n\
             ## 3.1 游戏结束条件\n## 3.2 计分细则与平局判定\n\n# 4. 卡牌/板块特殊效果说明 (如果有)"
-        selected: true
+        selected: false
         structured_output_enabled: false
         title: 规则提取
         type: llm
@@ -226,11 +232,11 @@ workflow:
       id: '1774937249213'
       position:
         x: 684
-        y: 282
+        y: 24
       positionAbsolute:
         x: 684
-        y: 282
-      selected: true
+        y: 24
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -243,7 +249,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: gemini-3-flash-preview
+          name: gemini-3.1-flash-lite-preview
           provider: langgenius/gemini/google
         prompt_template:
         - id: dd907802-e059-43e1-9d1e-5bcc3b053101
@@ -263,11 +269,11 @@ workflow:
       height: 88
       id: '1774937690606'
       position:
-        x: 986
-        y: 282
+        x: 1026
+        y: 24
       positionAbsolute:
-        x: 986
-        y: 282
+        x: 1026
+        y: 24
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -285,24 +291,106 @@ workflow:
           - text
           value_type: string
           variable: quick_start_guide
+        - value_selector:
+          - '1775022724105'
+          - text
+          value_type: string
+          variable: start_questions
         selected: false
         title: 输出
         type: end
-      height: 114
+      height: 140
       id: '1774937816197'
       position:
-        x: 1288
-        y: 282
+        x: 1368
+        y: 11
       positionAbsolute:
-        x: 1288
-        y: 282
+        x: 1368
+        y: 11
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        dataset_ids:
+        - FQVMjvF05I6aevY0TXEjp4jwBTeKPjpsHrIGDLumBZz+ci5QqHmk/ksRQMcBnIHF
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0
+            vector_setting:
+              embedding_model_name: gemini-embedding-2-preview
+              embedding_provider_name: langgenius/gemini/google
+              vector_weight: 1
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1774936549322'
+        - default_knowledge
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索
+        type: knowledge-retrieval
+      height: 90
+      id: '1775019858894'
+      position:
+        x: 342
+        y: 42
+      positionAbsolute:
+        x: 342
+        y: 42
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gemini-3.1-flash-lite-preview
+          provider: langgenius/gemini/google
+        prompt_template:
+        - id: 74afcd15-403a-431a-8f1c-dfcda347056b
+          role: system
+          text: "# Role\n你是一位极其敏锐的“桌游新手教练”。你刚刚阅读完一份完整的桌游规则 Markdown 文档。你的任务是站在一个【从未玩过这款游戏、且不想读长篇规则】的玩家视角，提出\
+            \ 4 个最能帮助他们“快速破冰”并“开始行动”的问题。\n\n# Goal\n生成 4 个预设引导问题。这些问题必须具备：\n1. 高频性：玩家在开局前\
+            \ 10 分钟最关心的问题。\n2. 具象性：直接指向游戏中的特定配件、数值或阶段，而不是空泛的“怎么玩”。\n3. 趣味性：带一点桌游圈的术语或生动的描述。\n\
+            \n# Questions Strategy (4个问题的维度)\n请严格按照以下维度各生成 1 个问题：\n1. 【核心目标维】：关于“怎么赢”或“分数从哪来”最直白的问题。\n\
+            2. 【起手操作维】：关于“第一回合我该干点啥”或“不知道干嘛时选哪个”的问题。\n3. 【核心机制维】：针对该游戏最独特的一个机制（如：轮抽、工人放置、引擎构建）的询问。\n\
+            4. 【常见疑惑维】：针对新手最容易犯错或漏掉的限制条件的询问。\n\n# Constraints\n- 每个问题字数控制在 25 字以内。\n\
+            - 必须搭配一个生动的 Emoji 前缀。\n- 不要出现“请问、能否”等客套话，直接提问。\n- 强制输出 JSON 格式。\n\n# Output\
+            \ Example (以《璀璨宝石》为例)\n[\n  \"\U0001F3C6 怎么才能比别人更快攒够 15 分？\",\n  \"\U0001F48E\
+            \ 第一回合拿宝石好还是直接定牌好？\",\n  \"\U0001F3E0 黄金币（黄牌）在什么情况下用最划算？\",\n  \"\U0001F451\
+            \ 怎么才能吸引贵族（大卡片）来我家坐坐？\"\n]\n\n# 待处理规则原文\n{{#1774937249213.text#}}"
+        selected: false
+        title: 生成建议问题
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: '1775022724105'
+      position:
+        x: 1026
+        y: 151
+      positionAbsolute:
+        x: 1026
+        y: 151
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 242
     viewport:
-      x: 19.243542027174556
-      y: 244.14378540110718
-      zoom: 0.4327911152357841
+      x: -253.19696012778786
+      y: 235.04741309530255
+      zoom: 0.7821009966505547
   rag_pipeline_variables: []
