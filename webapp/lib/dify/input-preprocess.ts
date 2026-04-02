@@ -140,8 +140,9 @@ async function rasterizePdfToImages(pdfBytes: Buffer, fileName: string): Promise
   }))
 }
 
-async function fetchRuleImagesFromGstone(url: string): Promise<ImageAsset[]> {
-  const res = await fetch(url, {
+/** 从集石游戏页解析规则预览图 URL 列表（顺序与下载一致）。 */
+export async function fetchGstoneRuleImageUrls(pageUrl: string): Promise<string[]> {
+  const res = await fetch(pageUrl, {
     headers: {
       'User-Agent': 'Mozilla/5.0',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -164,15 +165,17 @@ async function fetchRuleImagesFromGstone(url: string): Promise<ImageAsset[]> {
       links.add(`https:${src}`)
       return
     }
-    links.add(new URL(src, url).toString())
+    links.add(new URL(src, pageUrl).toString())
   })
   if (links.size === 0) throw new Error('未提取到规则图片链接')
+  return Array.from(links)
+}
 
+async function downloadRuleImagesFromUrls(imageUrls: string[], refererUrl: string): Promise<ImageAsset[]> {
   const results: ImageAsset[] = []
-  const ordered = Array.from(links)
-  for (let i = 0; i < ordered.length; i++) {
-    const link = ordered[i]
-    const imgRes = await fetch(link, { headers: { Referer: url, 'User-Agent': 'Mozilla/5.0' } })
+  for (let i = 0; i < imageUrls.length; i++) {
+    const link = imageUrls[i]
+    const imgRes = await fetch(link, { headers: { Referer: refererUrl, 'User-Agent': 'Mozilla/5.0' } })
     if (!imgRes.ok) throw new Error(`下载规则图片失败：${imgRes.status} ${link}`)
     const arr = Buffer.from(await imgRes.arrayBuffer())
     results.push({ name: `${String(i + 1).padStart(3, '0')}_page`, bytes: arr })
@@ -184,8 +187,10 @@ export async function prepareWorkflowFilesFromSource(params: {
   sourceType: string
   sourceUrl?: string | null
   sourceFiles?: File[]
+  /** 集石 URL 模式下，要剔除的页索引（从 0 开始，与预览列表顺序一致） */
+  excludedIndices?: number[]
 }): Promise<WorkflowFileInput[]> {
-  const { sourceType, sourceUrl, sourceFiles = [] } = params
+  const { sourceType, sourceUrl, sourceFiles = [], excludedIndices = [] } = params
 
   if (sourceType === 'pdf') {
     const sourceFile = sourceFiles[0]
@@ -212,7 +217,16 @@ export async function prepareWorkflowFilesFromSource(params: {
     imageAssets = validateAndSortPageNamed(imageAssets)
   } else if (sourceType === 'url') {
     if (!sourceUrl) throw new Error('请提供集石 URL')
-    imageAssets = await fetchRuleImagesFromGstone(sourceUrl)
+    const urls = await fetchGstoneRuleImageUrls(sourceUrl)
+    const excluded = new Set(
+      excludedIndices.filter((i) => Number.isInteger(i) && i >= 0 && i < urls.length),
+    )
+    const filtered = urls.filter((_, i) => !excluded.has(i))
+    if (filtered.length === 0) throw new Error('请至少保留一页规则图片')
+    if (filtered.length > MAX_IMAGES) {
+      throw new Error(`保留页数超过当前上限（${filtered.length}/${MAX_IMAGES}）`)
+    }
+    imageAssets = await downloadRuleImagesFromUrls(filtered, sourceUrl)
   } else {
     throw new Error(`不支持的 sourceType: ${sourceType}`)
   }

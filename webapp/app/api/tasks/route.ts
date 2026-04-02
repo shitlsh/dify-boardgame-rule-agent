@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   const playerCountRaw = (formData.get('playerCount') as string | null)?.trim() ?? ''
   const sourceType = (formData.get('sourceType') as string | null) ?? 'url'
   const sourceUrl = (formData.get('sourceUrl') as string | null)?.trim() ?? null
+  const excludedIndicesRaw = (formData.get('excludedIndices') as string | null)?.trim() ?? ''
   const sourceFiles = formData
     .getAll('sourceFiles')
     .filter((v): v is File => v instanceof File && v.size > 0)
@@ -53,9 +54,26 @@ export async function POST(req: NextRequest) {
 
   const playerCount = playerCountRaw || null
 
+  let excludedIndices: number[] | undefined
+  if (excludedIndicesRaw && sourceType === 'url') {
+    try {
+      const parsed = JSON.parse(excludedIndicesRaw) as unknown
+      if (Array.isArray(parsed)) {
+        excludedIndices = parsed.filter((n): n is number => typeof n === 'number' && Number.isInteger(n))
+      }
+    } catch {
+      return NextResponse.json({ error: 'excludedIndices 需为 JSON 数组' }, { status: 400 })
+    }
+  }
+
   let ruleFiles
   try {
-    ruleFiles = await prepareWorkflowFilesFromSource({ sourceType, sourceUrl, sourceFiles })
+    ruleFiles = await prepareWorkflowFilesFromSource({
+      sourceType,
+      sourceUrl,
+      sourceFiles,
+      excludedIndices,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : '规则文件预处理失败'
     return NextResponse.json({ error: message }, { status: 400 })
